@@ -1,9 +1,8 @@
 /**
- * v1-parity tests for formatter behavior.
+ * Tests for formatter behavior.
  *
- * Port of src/v1/formatting.test.ts (at commit 27c5220, parent of the v1
- * deletion commit 86becf8). Covers: context timezone header, reply_to +
- * quoted_message rendering, XML escaping, and stripInternalTags.
+ * Covers: context timezone header, reply_to + quoted_message rendering,
+ * XML escaping, and stripInternalTags.
  *
  * Timestamp-format assertions use `formatLocalTime()` output format, which
  * is host locale-dependent for decorators (month abbr, "," separator) but

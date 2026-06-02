@@ -1,6 +1,6 @@
 /**
  * Tests for `handleRecurrence` — specifically the timezone-aware cron
- * interpretation ported from v1 (src/v1/task-scheduler.ts).
+ * interpretation.
  *
  * Core invariant: cron expressions are interpreted in the user's TIMEZONE,
  * not UTC. Without this, `"0 9 * * *"` fires at 09:00 UTC instead of 09:00

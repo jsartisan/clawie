@@ -435,9 +435,6 @@ async function main(): Promise<void> {
     await runTimezoneStep();
   }
 
-  // v1 → v2 migration is handled by `bash migrate-v2.sh`, not the setup flow.
-  // Users migrating from v1 run that script before (or instead of) setup.
-
   let channelChoice: ChannelChoice = 'skip';
 
   if (!skip.has('channel')) {
