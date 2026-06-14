@@ -17,7 +17,7 @@
  *      in a clack note, then hand off to `setup/run-suggested.sh` for
  *      editable pre-fill + exec.
  *
- * Skippable with NANOCLAW_SKIP_CLAUDE_ASSIST=1 for CI/scripted runs.
+ * Skippable with CLAWIE_SKIP_CLAUDE_ASSIST=1 for CI/scripted runs.
  */
 import { execSync, spawn, spawnSync } from 'child_process';
 import fs from 'fs';
@@ -44,7 +44,7 @@ export interface AssistContext {
  * they appear in fail() calls; values are repo-relative paths.
  */
 export const STEP_FILES: Record<string, string[]> = {
-  bootstrap: ['setup.sh', 'setup/install-node.sh', 'nanoclaw.sh'],
+  bootstrap: ['setup.sh', 'setup/install-node.sh', 'clawie.sh'],
   environment: ['setup/environment.ts'],
   container: [
     'setup/container.ts',
@@ -93,7 +93,7 @@ export async function offerClaudeAssist(
   ctx: AssistContext,
   projectRoot: string = process.cwd(),
 ): Promise<boolean> {
-  if (process.env.NANOCLAW_SKIP_CLAUDE_ASSIST === '1') return false;
+  if (process.env.CLAWIE_SKIP_CLAUDE_ASSIST === '1') return false;
   if (!(await ensureClaudeReady(projectRoot))) return false;
 
   const want = ensureAnswer(
@@ -244,7 +244,7 @@ function buildPrompt(ctx: AssistContext, projectRoot: string): string {
   const hintLine = ctx.hint ? `Hint shown to the user: ${ctx.hint}\n` : '';
 
   return [
-    "I'm trying to set up NanoClaw on my machine and ran into an issue",
+    "I'm trying to set up Clawie on my machine and ran into an issue",
     'during the setup flow. Please read the referenced files to understand',
     'the flow and the step that failed, look at the logs to see what went',
     'wrong, then suggest a single bash command I can run to fix it.',

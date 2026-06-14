@@ -1,7 +1,7 @@
 /**
  * Portal authentication.
  *
- * NanoClaw is a personal agent. The portal server binds to loopback (127.0.0.1)
+ * Clawie is a personal agent. The portal server binds to loopback (127.0.0.1)
  * and access is gated by Origin/Host validation only:
  *
  *  - Requests from a non-local Origin or Host are rejected outright, defeating

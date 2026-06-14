@@ -1,4 +1,4 @@
-# NanoClaw Architecture Diagram
+# Clawie Architecture Diagram
 
 ## System Overview
 

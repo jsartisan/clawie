@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# NanoClaw — end-to-end setup entry point.
+# Clawie — end-to-end setup entry point.
 #
 # Runs two parts from the user's perspective as one continuous flow:
 #   - bash-side: install the basics (Node + pnpm + native modules) under a
@@ -16,7 +16,7 @@
 #   3. Raw per-step log  — logs/setup-steps/NN-name.log (full verbatim output)
 #
 # Config via env — passed through unchanged:
-#   NANOCLAW_SKIP  comma-separated setup:auto step names to skip
+#   CLAWIE_SKIP  comma-separated setup:auto step names to skip
 #   SECRET_NAME    OneCLI secret name (default: Anthropic)
 #   HOST_PATTERN   OneCLI host pattern (default: api.anthropic.com)
 
@@ -49,7 +49,7 @@ write_header() {
   commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
   {
     echo "## ${ts} · setup:auto started"
-    echo "  invocation: nanoclaw.sh"
+    echo "  invocation: clawie.sh"
     echo "  user: $(whoami)"
     echo "  cwd: ${PROJECT_ROOT}"
     echo "  branch: ${branch}"
@@ -129,16 +129,16 @@ rm -f  "$PROGRESS_LOG"
 mkdir -p "$STEPS_DIR" "$LOGS_DIR"
 write_header
 
-# NanoClaw splash — under-the-sea lobster mascot in truecolor braille,
+# Clawie splash — under-the-sea lobster mascot in truecolor braille,
 # with the figlet wordmark and taglines below. Pre-rendered into
-# assets/setup-splash.txt (built from assets/nanoclaw-icon.png via chafa +
+# assets/setup-splash.txt (built from assets/clawie-icon.png via chafa +
 # figlet); the bash script just streams the literal frame. clack's intro
 # then carries the "let's get you set up" framing — setup:auto sees
-# NANOCLAW_BOOTSTRAPPED=1 and skips re-printing the wordmark.
+# CLAWIE_BOOTSTRAPPED=1 and skips re-printing the wordmark.
 cat "$PROJECT_ROOT/assets/setup-splash.txt"
 
 # ─── pre-flight: minimum hardware specs ────────────────────────────────
-# NanoClaw runs an agent container per session. Below this threshold the
+# Clawie runs an agent container per session. Below this threshold the
 # host + container + agent will struggle (OOM under load). Soft warn — the
 # user can override.
 
@@ -166,8 +166,8 @@ LOW_MEM=false
 [ "$MEM_MB" -gt 0 ] && [ "$MEM_MB" -lt "$MIN_MEM_MB" ] && LOW_MEM=true
 
 if [ "$LOW_MEM" = true ]; then
-  printf '  %s\n' "$(red 'Warning: this machine likely cannot run NanoClaw.')"
-  printf '  %s\n' "$(dim 'NanoClaw recommends a 4 GB+ RAM machine. Below this, the host + agent')"
+  printf '  %s\n' "$(red 'Warning: this machine likely cannot run Clawie.')"
+  printf '  %s\n' "$(dim 'Clawie recommends a 4 GB+ RAM machine. Below this, the host + agent')"
   printf '  %s\n' "$(dim 'container will run out of memory under most workloads. A stronger')"
   printf '  %s\n' "$(dim 'machine is strongly recommended.')"
   printf '  %s\n' "$(dim "  · Detected RAM: ${MEM_MB} MB")"
@@ -188,7 +188,7 @@ if [ "$LOW_MEM" = true ]; then
 fi
 
 # ─── pre-flight: Google Cloud VM warning (Linux) ──────────────────────
-# NanoClaw is known to not run reliably on Google Compute Engine instances.
+# Clawie is known to not run reliably on Google Compute Engine instances.
 # Warn early — before the root check or bootstrap spinner — so users can
 # switch providers before sinking time into setup. Detection uses DMI
 # (no network round-trip), which on GCE reports "Google" / "Google
@@ -197,8 +197,8 @@ if [ "$(uname -s)" = "Linux" ] \
   && { grep -qi 'Google' /sys/class/dmi/id/product_name 2>/dev/null \
     || grep -qi 'Google' /sys/class/dmi/id/sys_vendor   2>/dev/null; }; then
   printf '  %s\n' "$(red 'Warning: Google Cloud VM detected.')"
-  printf '  %s\n' "$(dim 'Google blocks sudo commands, so NanoClaw is unlikely to run successfully on this VM.')"
-  printf '  %s\n\n' "$(dim 'If you want to run NanoClaw successfully, switch to a different provider (Hetzner, Hostinger, exe.dev and others..).')"
+  printf '  %s\n' "$(dim 'Google blocks sudo commands, so Clawie is unlikely to run successfully on this VM.')"
+  printf '  %s\n\n' "$(dim 'If you want to run Clawie successfully, switch to a different provider (Hetzner, Hostinger, exe.dev and others..).')"
   read -r -p "  $(bold 'Try anyway?') [y/N] " GCE_ANS </dev/tty
 
   case "${GCE_ANS:-N}" in
@@ -219,11 +219,11 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(id -u)" -eq 0 ]; then
   printf '  %s\n' \
     "$(red 'Warning: you are running as root.')"
   printf '  %s\n' \
-    "$(dim "Running NanoClaw as root is not recommended. It can cause permission")"
+    "$(dim "Running Clawie as root is not recommended. It can cause permission")"
   printf '  %s\n\n' \
     "$(dim "issues with containers, services, and file ownership.")"
   printf '  %s\n' "$(bold '1)') $(dim 'Show me instructions for creating a new Linux user')"
-  printf '  %s\n\n' "$(bold '2)') $(dim 'Continue setting up NanoClaw as root user (not recommended)')"
+  printf '  %s\n\n' "$(bold '2)') $(dim 'Continue setting up Clawie as root user (not recommended)')"
   read -r -p "  $(bold 'Choose [1/2]: ')" ROOT_ANS </dev/tty
 
   case "${ROOT_ANS:-1}" in
@@ -235,13 +235,13 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(id -u)" -eq 0 ]; then
       ph_event setup_root_aborted
       printf '\n  %s\n' "$(bold 'To set up a regular user (via SSH):')"
       printf '  %s\n\n' "$(dim 'Not using SSH? Refer to your hosting provider docs or ask your coding agent to help you set up SSH access.')"
-      printf '  %s\n' "$(dim '1. Create a new user:           adduser nanoclaw')"
-      printf '  %s\n' "$(dim '2. Add to sudo group:           usermod -aG sudo nanoclaw')"
-      printf '  %s\n' "$(dim '3. Enable passwordless sudo:    echo "nanoclaw ALL=(ALL) NOPASSWD:ALL" | tee /etc/sudoers.d/nanoclaw')"
+      printf '  %s\n' "$(dim '1. Create a new user:           adduser clawie')"
+      printf '  %s\n' "$(dim '2. Add to sudo group:           usermod -aG sudo clawie')"
+      printf '  %s\n' "$(dim '3. Enable passwordless sudo:    echo "clawie ALL=(ALL) NOPASSWD:ALL" | tee /etc/sudoers.d/clawie')"
       printf '  %s\n' "$(dim '4. Log out:                     exit')"
-      printf '  %s\n' "$(dim '5. Log back in as the new user: ssh nanoclaw@your-server')"
-      printf '  %s\n' "$(dim '6. Clone the repo:              git clone https://github.com/nanocoai/nanoclaw.git && cd nanoclaw')"
-      printf '  %s\n\n' "$(dim '7. Re-run setup:               bash nanoclaw.sh')"
+      printf '  %s\n' "$(dim '5. Log back in as the new user: ssh clawie@your-server')"
+      printf '  %s\n' "$(dim '6. Clone the repo:              git clone https://github.com/nanocoai/clawie.git && cd clawie')"
+      printf '  %s\n\n' "$(dim '7. Re-run setup:               bash clawie.sh')"
       exit 1
       ;;
   esac
@@ -255,7 +255,7 @@ fi
 # brew's own interactive sudo/CLT prompts stay readable.
 if [ "$(uname -s)" = "Darwin" ] && ! command -v brew >/dev/null 2>&1; then
   printf '  %s\n' \
-    "$(dim "Homebrew isn't installed. NanoClaw uses it to install Node and Docker on your Mac.")"
+    "$(dim "Homebrew isn't installed. Clawie uses it to install Node and Docker on your Mac.")"
   printf '  %s\n\n' \
     "$(dim "This also installs Apple's Command Line Tools, which can take 5-10 minutes.")"
   read -r -p "  $(bold 'Install Homebrew now?') [Y/n] " BREW_ANS </dev/tty
@@ -282,14 +282,14 @@ if [ "$(uname -s)" = "Darwin" ] && ! command -v brew >/dev/null 2>&1; then
       if ! command -v brew >/dev/null 2>&1; then
         printf '\n  %s %s\n' "$(red '✗')" "Homebrew install didn't complete."
         printf '  %s\n\n' \
-          "$(dim 'Install manually from https://brew.sh and re-run: bash nanoclaw.sh')"
+          "$(dim 'Install manually from https://brew.sh and re-run: bash clawie.sh')"
         exit 1
       fi
       printf '\n'
       ;;
     *)
       printf '\n  %s\n\n' \
-        "$(dim 'NanoClaw needs Homebrew. Install it from https://brew.sh and re-run.')"
+        "$(dim 'Clawie needs Homebrew. Install it from https://brew.sh and re-run.')"
       exit 1
       ;;
   esac
@@ -305,11 +305,11 @@ spinner_start "$BOOTSTRAP_LABEL"
 
 # Run in the background so we can tick elapsed time. Capture exit code via
 # a tmpfile (subshell $? is lost after the while loop finishes).
-BOOTSTRAP_EXIT_FILE=$(mktemp -t nanoclaw-bootstrap-exit.XXXXXX)
+BOOTSTRAP_EXIT_FILE=$(mktemp -t clawie-bootstrap-exit.XXXXXX)
 (
   # setup.sh's legacy `log()` writes to a file; point it at the raw log
   # so its verbose entries land alongside the stdout we're capturing.
-  export NANOCLAW_BOOTSTRAP_LOG="$BOOTSTRAP_RAW"
+  export CLAWIE_BOOTSTRAP_LOG="$BOOTSTRAP_RAW"
   if bash setup.sh > "$BOOTSTRAP_RAW" 2>&1; then
     echo 0 > "$BOOTSTRAP_EXIT_FILE"
   else
@@ -350,10 +350,10 @@ fi
 
 # ─── hand off to setup:auto ────────────────────────────────────────────
 
-# NANOCLAW_BOOTSTRAPPED=1 tells setup/auto.ts to skip the wordmark (we
+# CLAWIE_BOOTSTRAPPED=1 tells setup/auto.ts to skip the wordmark (we
 # already printed it) and to append to the progression log rather than
 # wipe it.
-export NANOCLAW_BOOTSTRAPPED=1
+export CLAWIE_BOOTSTRAPPED=1
 
 # setup.sh may have just installed pnpm via npm into a prefix that's not on
 # our PATH (custom `npm config set prefix`, or the default prefix missing
@@ -366,7 +366,7 @@ if ! command -v pnpm >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-# --silent suppresses pnpm's `> nanoclaw@2.0.0 setup:auto / > tsx setup/auto.ts`
+# --silent suppresses pnpm's `> clawie@2.0.0 setup:auto / > tsx setup/auto.ts`
 # preamble so the flow continues visually from "Basics installed" straight
 # into setup:auto's spinner. exec so signals (Ctrl-C) propagate directly.
 # `-- "$@"` forwards any flags (e.g. --onecli-api-host) to setup:auto.

@@ -23,7 +23,7 @@ describe('detectRegisteredGroups', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-env-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawie-env-test-'));
     fs.mkdirSync(path.join(tempDir, 'data'), { recursive: true });
   });
 

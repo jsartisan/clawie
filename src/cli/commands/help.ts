@@ -1,8 +1,8 @@
 /**
  * Built-in help command. Introspects the resource and command registries.
  *
- *   ncl help               — list all resources and commands
- *   ncl groups help         — show group resource details (verbs, columns, enums)
+ *   clawie help               — list all resources and commands
+ *   clawie groups help         — show group resource details (verbs, columns, enums)
  */
 import { getContainerConfig } from '../../db/container-configs.js';
 import { getResources } from '../crud.js';
@@ -60,7 +60,7 @@ register({
     }
 
     lines.push('');
-    lines.push('Run `ncl <resource> help` for detailed field information.');
+    lines.push('Run `clawie <resource> help` for detailed field information.');
     return lines.join('\n');
   },
 });

@@ -13,9 +13,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="bg-background text-foreground flex h-screen w-screen flex-col">
       <header className="border-border flex h-14 shrink-0 items-center justify-between border-b px-4">
-        <Link to="/" className="flex items-center gap-x-2 outline-none" aria-label="NanoClaw — your agents">
+        <Link to="/" className="flex items-center gap-x-2 outline-none" aria-label="Clawie — your agents">
           <BrandMark className="size-5 text-foreground" />
-          <span className="font-serif text-sm font-medium">NanoClaw</span>
+          <span className="font-serif text-sm font-medium">Clawie</span>
         </Link>
         <UserMenu />
       </header>

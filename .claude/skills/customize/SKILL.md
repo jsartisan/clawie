@@ -1,9 +1,9 @@
 ---
 name: customize
-description: Add new capabilities or modify NanoClaw behavior. Use when user wants to add channels (Telegram, Slack, email input), change triggers, add integrations, modify the router, or make any other customizations. This is an interactive skill that asks questions to understand what the user wants.
+description: Add new capabilities or modify Clawie behavior. Use when user wants to add channels (Telegram, Slack, email input), change triggers, add integrations, modify the router, or make any other customizations. This is an interactive skill that asks questions to understand what the user wants.
 ---
 
-# NanoClaw Customization
+# Clawie Customization
 
 This skill helps users add capabilities or modify behavior. Use AskUserQuestion to understand what they want before making changes.
 
@@ -90,7 +90,7 @@ Implementation:
 
 Always tell the user.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 # Rebuild and restart

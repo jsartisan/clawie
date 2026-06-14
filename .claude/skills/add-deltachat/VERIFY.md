@@ -3,7 +3,7 @@
 ## 1. Check the adapter started
 
 ```bash
-grep "Channel adapter started.*deltachat" logs/nanoclaw.log | tail -1
+grep "Channel adapter started.*deltachat" logs/clawie.log | tail -1
 ```
 
 Expected: `Channel adapter started { channel: 'deltachat', type: 'deltachat' }`
@@ -30,8 +30,8 @@ bash -c "echo >/dev/tcp/$DC_SMTP/587" && echo "SMTP open" || echo "SMTP blocked"
 If nothing arrives, check:
 
 ```bash
-grep "DeltaChat" logs/nanoclaw.log | tail -20
-grep "DeltaChat" logs/nanoclaw.error.log | tail -10
+grep "DeltaChat" logs/clawie.log | tail -20
+grep "DeltaChat" logs/clawie.error.log | tail -10
 ```
 
 ## 4. Check messaging group was created

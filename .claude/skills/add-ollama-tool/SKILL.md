@@ -54,7 +54,7 @@ git remote -v
 If `upstream` is missing, add it:
 
 ```bash
-git remote add upstream https://github.com/nanocoai/nanoclaw.git
+git remote add upstream https://github.com/nanocoai/clawie.git
 ```
 
 ### Merge the skill branch
@@ -122,7 +122,7 @@ OLLAMA_HOST=http://your-ollama-host:11434
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -159,7 +159,7 @@ Run the watcher script for macOS notifications when Ollama is used:
 ### Check logs if needed
 
 ```bash
-tail -f logs/nanoclaw.log | grep -i ollama
+tail -f logs/clawie.log | grep -i ollama
 ```
 
 Look for:

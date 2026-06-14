@@ -399,7 +399,7 @@ async function openDmChannel(token: string, userId: string): Promise<string> {
 }
 
 async function resolveAgentName(): Promise<string> {
-  const preset = process.env.NANOCLAW_AGENT_NAME?.trim();
+  const preset = process.env.CLAWIE_AGENT_NAME?.trim();
   if (preset) {
     setupLog.userInput('agent_name', preset);
     return preset;
@@ -423,7 +423,7 @@ function showPostInstallChecklist(info: WorkspaceInfo): void {
         `Your agent is wired to Slack and a welcome DM is on its way.`,
         `To receive replies, Slack needs a public URL for delivering events:`,
         '',
-        '  1. Expose NanoClaw\'s webhook server (port 3000) via ngrok,',
+        '  1. Expose Clawie\'s webhook server (port 3000) via ngrok,',
         '     Cloudflare Tunnel, or a reverse proxy on a VPS.',
         '',
         '  2. In your Slack app → Event Subscriptions:',

@@ -54,7 +54,7 @@ export function App() {
             <BrandMark className="size-7" />
           </div>
           <div>
-            <h1 className="font-serif text-[28px] font-medium tracking-tight">Can't reach NanoClaw</h1>
+            <h1 className="font-serif text-[28px] font-medium tracking-tight">Can't reach Clawie</h1>
             <p className="text-muted-foreground mt-2 text-sm">
               The app isn't responding. Make sure it's running, then retry.
             </p>

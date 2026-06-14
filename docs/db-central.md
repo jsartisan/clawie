@@ -1,4 +1,4 @@
-# NanoClaw — Central DB Schema
+# Clawie — Central DB Schema
 
 Complete reference for `data/v2.db`, the host-owned admin-plane database. Start with [db.md](db.md) for the three-DB overview, the map, and the cross-mount rules.
 
@@ -258,7 +258,7 @@ Writer: `recordDroppedMessage()` in `src/db/dropped-messages.ts`. On conflict, b
 
 ### 1.13 Chat SDK bridge tables
 
-State backing the `SqliteStateAdapter` used by the Chat SDK bridge (see [api-details.md](api-details.md)). NanoClaw code rarely touches these directly — they're owned by `src/state-sqlite.ts`.
+State backing the `SqliteStateAdapter` used by the Chat SDK bridge (see [api-details.md](api-details.md)). Clawie code rarely touches these directly — they're owned by `src/state-sqlite.ts`.
 
 ```sql
 CREATE TABLE chat_sdk_kv (
@@ -349,7 +349,7 @@ CREATE TABLE channel_accounts (
 
 ### 1.17 `channel_account_secrets`
 
-Per-account credentials (bot tokens, app tokens), **encrypted at rest** with AES-256-GCM. Split from `channel_accounts` so the mapping stays safe to `list`/query while secrets never appear in plaintext anywhere — not in `ncl ... list`, not in DB backups, not via `q.ts`.
+Per-account credentials (bot tokens, app tokens), **encrypted at rest** with AES-256-GCM. Split from `channel_accounts` so the mapping stays safe to `list`/query while secrets never appear in plaintext anywhere — not in `clawie ... list`, not in DB backups, not via `q.ts`.
 
 ```sql
 CREATE TABLE channel_account_secrets (
@@ -361,7 +361,7 @@ CREATE TABLE channel_account_secrets (
 );
 ```
 
-- **Encryption:** `src/crypto/secrets.ts`. A single 32-byte master key lives in `.env` as `NANOCLAW_SECRET_KEY` (base64). Each value is self-describing — `base64(iv[12] | authTag[16] | ciphertext)` — so a fresh random IV and the GCM auth tag travel with the row.
+- **Encryption:** `src/crypto/secrets.ts`. A single 32-byte master key lives in `.env` as `CLAWIE_SECRET_KEY` (base64). Each value is self-describing — `base64(iv[12] | authTag[16] | ciphertext)` — so a fresh random IV and the GCM auth tag travel with the row.
 - **Threat model:** this protects *DB-only* exposure (a copied `data/v2.db`, backups, list output). It does **not** protect a host holding both `.env` and the DB, since the key is in `.env`. Keep `.env` at `chmod 600` (it is gitignored).
 - The master key is read via `readEnvFile` (not `process.env`) so it never leaks into spawned container environments — the same discipline used for channel tokens.
 - **Readers/writers:** `src/db/channel-accounts.ts` (`getAccountSecrets`, `setAccountSecret`).

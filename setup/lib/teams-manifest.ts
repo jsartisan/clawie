@@ -77,9 +77,9 @@ function renderManifest(opts: ManifestOptions): string {
     manifestVersion: MANIFEST_VERSION,
     version: '1.0.0',
     id: opts.appId,
-    packageName: 'com.nanoclaw.bot',
+    packageName: 'com.clawie.bot',
     developer: {
-      name: 'NanoClaw',
+      name: 'Clawie',
       websiteUrl: opts.websiteUrl,
       privacyUrl: opts.websiteUrl,
       termsOfUseUrl: opts.websiteUrl,

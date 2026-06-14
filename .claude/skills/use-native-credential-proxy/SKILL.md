@@ -5,7 +5,7 @@ description: Replace OneCLI gateway with the built-in credential proxy. For user
 
 # Use Native Credential Proxy
 
-This skill replaces the OneCLI gateway with NanoClaw's built-in credential proxy. Containers get credentials injected via a local HTTP proxy that reads from `.env` — no external services needed.
+This skill replaces the OneCLI gateway with Clawie's built-in credential proxy. Containers get credentials injected via a local HTTP proxy that reads from `.env` — no external services needed.
 
 ## Phase 1: Pre-flight
 
@@ -27,7 +27,7 @@ grep "@onecli-sh/sdk" package.json
 
 If `@onecli-sh/sdk` appears, OneCLI is the active credential provider. Proceed with Phase 2 to replace it.
 
-If neither check matches, you may be on an older version. Run `/update-nanoclaw` first, then retry.
+If neither check matches, you may be on an older version. Run `/update-clawie` first, then retry.
 
 ## Phase 2: Apply Code Changes
 
@@ -40,7 +40,7 @@ git remote -v
 If `upstream` is missing, add it:
 
 ```bash
-git remote add upstream https://github.com/nanocoai/nanoclaw.git
+git remote add upstream https://github.com/nanocoai/clawie.git
 ```
 
 ### Merge the skill branch
@@ -130,16 +130,16 @@ pnpm run build
 
 Then restart the service.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 - macOS: `launchctl kickstart -k gui/$(id -u)/"$(. setup/lib/install-slug.sh && launchd_label)"`
 - Linux: `systemctl --user restart "$(. setup/lib/install-slug.sh && systemd_unit)"`
-- WSL/manual: stop and re-run `bash start-nanoclaw.sh`
+- WSL/manual: stop and re-run `bash start-clawie.sh`
 
 2. Check logs for successful proxy startup:
 
 ```bash
-tail -20 logs/nanoclaw.log | grep "Credential proxy"
+tail -20 logs/clawie.log | grep "Credential proxy"
 ```
 
 Expected: `Credential proxy started` with port and auth mode.

@@ -1,24 +1,38 @@
 version: '3'
 
 # go-task tasks for local development. Install go-task: https://taskfile.dev
-# `task dev` runs the NanoClaw host and the admin web UI together.
+# `task dev` starts a tmux session with separate windows for host and web, then attaches.
 
 tasks:
   dev:
-    desc: Run the NanoClaw host + admin web UI together (prefixed output, single Ctrl-C)
+    desc: Start and attach to the tmux development environment
     cmds:
-      - node scripts/dev.mjs
+      - node scripts/dev.mjs dev
 
-  dev:host:
-    desc: Run only the NanoClaw host (Node/tsx)
+  start:
+    desc: Start the development environment (without attaching)
     cmds:
-      - pnpm run dev
+      - node scripts/dev.mjs start
 
-  dev:ui:
-    desc: Run only the admin web UI dev server (Vite on :4101)
-    dir: web
+  stop:
+    desc: Stop the development environment
     cmds:
-      - bun run dev
+      - node scripts/dev.mjs stop
+
+  status:
+    desc: Show status of all dev processes
+    cmds:
+      - node scripts/dev.mjs status
+
+  restart-*:
+    desc: "Restart a service (host, web)"
+    cmds:
+      - node scripts/dev.mjs restart {{index .MATCH 0}}
+
+  tail-*:
+    desc: "View recent output from a service (host, web)"
+    cmds:
+      - node scripts/dev.mjs tail {{index .MATCH 0}}
 
   install:
     desc: Install host (pnpm) and web (bun) dependencies

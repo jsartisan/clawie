@@ -104,7 +104,7 @@ async function sendPairingConfirmation(token: string, platformId: string): Promi
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: 'Pairing success! Head back to the NanoClaw installer to finish setup.',
+        text: 'Pairing success! Head back to the Clawie installer to finish setup.',
       }),
     });
     if (!res.ok) {

@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 const TEST_KEY = randomBytes(32).toString('base64');
 
 vi.mock('../env.js', () => ({
-  readEnvFile: (keys: string[]) => (keys.includes('NANOCLAW_SECRET_KEY') ? { NANOCLAW_SECRET_KEY: TEST_KEY } : {}),
+  readEnvFile: (keys: string[]) => (keys.includes('CLAWIE_SECRET_KEY') ? { CLAWIE_SECRET_KEY: TEST_KEY } : {}),
 }));
 
 const { encryptSecret, decryptSecret } = await import('./secrets.js');

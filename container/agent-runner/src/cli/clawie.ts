@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * ncl — NanoClaw CLI client (container edition).
+ * clawie — Clawie CLI client (container edition).
  *
- * Same interface as the host-side `bin/ncl`. Detects that it's inside a
+ * Same interface as the host-side `bin/clawie`. Detects that it's inside a
  * container (the session DBs exist at /workspace/) and uses a DB transport
  * instead of the Unix socket transport.
  *
@@ -160,7 +160,7 @@ function parseArgv(argv: string[]): {
   }
 
   if (positional.length === 0) {
-    process.stderr.write('ncl: missing command\n');
+    process.stderr.write('clawie: missing command\n');
     printUsage();
     process.exit(2);
   }
@@ -174,7 +174,7 @@ function parseArgv(argv: string[]): {
 
 function printUsage(): void {
   process.stdout.write(
-    ['Usage: ncl <command> [--key value ...] [--json]', '', 'Run `ncl help` to list available commands.', ''].join('\n'),
+    ['Usage: clawie <command> [--key value ...] [--json]', '', 'Run `clawie help` to list available commands.', ''].join('\n'),
   );
 }
 
@@ -238,7 +238,7 @@ writeRequest(req);
 const resp = pollResponse(requestId, 30_000);
 
 if (!resp) {
-  process.stderr.write('ncl: command timed out after 30s\n');
+  process.stderr.write('clawie: command timed out after 30s\n');
   process.exit(2);
 }
 

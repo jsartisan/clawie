@@ -135,7 +135,7 @@ async function spawnContainer(session: Session): Promise<void> {
   // Provision the group's filesystem + container_config row up front.
   // Idempotent (no-op once a group has spawned). Must run before
   // materializeContainerJson below, which reads the container_config row and
-  // throws if it's missing — the case for a group created via `ncl groups
+  // throws if it's missing — the case for a group created via `clawie groups
   // create` that has never spawned. buildMounts also calls this, but that's
   // too late for the materialize step. See container-config.ts.
   initGroupFilesystem(agentGroup);
@@ -160,10 +160,10 @@ async function spawnContainer(session: Session): Promise<void> {
   const { provider, contribution } = resolveProviderContribution(session, agentGroup, containerConfig);
 
   const mounts = buildMounts(agentGroup, session, containerConfig, contribution);
-  const containerName = `nanoclaw-v2-${agentGroup.folder}-${Date.now()}`;
+  const containerName = `clawie-v2-${agentGroup.folder}-${Date.now()}`;
   // OneCLI agent identifier — derived from the agent group id, stable across
   // sessions. Sanitized to satisfy the gateway's `^[a-z][a-z0-9-]{0,49}$` rule
-  // (raw `randomUUID()` ids from `ncl groups create` can start with a digit and
+  // (raw `randomUUID()` ids from `clawie groups create` can start with a digit and
   // get a 400). Reversed for approval routing via
   // getAgentGroupByOneCLIIdentifier().
   const agentIdentifier = toOneCLIIdentifier(agentGroup.id);
@@ -192,7 +192,7 @@ async function spawnContainer(session: Session): Promise<void> {
 
   // Containers run with --rm, so their output is gone once they exit. Tee
   // stderr to logs/containers/<session-id>.log so failures stay debuggable
-  // (`ncl sessions logs`), in addition to the debug-level host log.
+  // (`clawie sessions logs`), in addition to the debug-level host log.
   const logSink = openContainerLog(session.id, containerName);
   container.stderr?.on('data', (data) => {
     const text = data.toString();
@@ -264,7 +264,7 @@ function notifyAbnormalExit(session: Session): void {
       channelType: mg.channel_type,
       threadId: session.thread_id,
       content: JSON.stringify({
-        text: 'I ran into a problem and had to restart — retrying your last message shortly. If this keeps happening, an admin can check the logs with `ncl sessions logs`.',
+        text: 'I ran into a problem and had to restart — retrying your last message shortly. If this keeps happening, an admin can check the logs with `clawie sessions logs`.',
       }),
     });
     lastFailureNotice.set(session.id, Date.now());
@@ -500,7 +500,7 @@ async function buildContainerArgs(
   const args: string[] = ['run', '--rm', '--name', containerName, '--label', CONTAINER_INSTALL_LABEL];
 
   // Environment — only vars read by code we don't own.
-  // Everything NanoClaw-specific is in container.json (read by runner at startup).
+  // Everything Clawie-specific is in container.json (read by runner at startup).
   args.push('-e', `TZ=${TIMEZONE}`);
 
   // Provider-contributed env vars (e.g. XDG_DATA_HOME, OPENCODE_*, NO_PROXY).

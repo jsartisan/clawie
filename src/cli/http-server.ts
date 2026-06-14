@@ -1,15 +1,15 @@
 /**
  * Portal HTTP server — the user-facing web product surface.
  *
- * Exposes the `ncl` dispatch/CRUD layer over a tiny JSON API so the web/
+ * Exposes the `clawie` dispatch/CRUD layer over a tiny JSON API so the web/
  * SPA (the portal) can manage agents, channel accounts, wirings, etc. — the
- * same surface the `ncl` CLI drives, but with a browser UI.
+ * same surface the `clawie` CLI drives, but with a browser UI.
  *
  * Security model: binds to 127.0.0.1 AND requires auth on /api:
  *   - bearer token (NCL_PORTAL_TOKEN, generated into .env on first start)
  *   - Origin/Host validation (rejects DNS rebinding + browser-origin CSRF)
  * See src/cli/portal-auth.ts for the rationale. No accounts or sessions —
- * NanoClaw is a personal agent. The bearer token is the sole credential.
+ * Clawie is a personal agent. The bearer token is the sole credential.
  *
  * Routes:
  *   GET  /api/schema       → { resources: ResourceSchema[] } (drives the UI)

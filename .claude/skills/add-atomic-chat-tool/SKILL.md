@@ -51,7 +51,7 @@ Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that cu
 
 ```ts
   const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    nanoclaw: {
+    clawie: {
       command: 'bun',
       args: ['run', mcpServerPath],
       env: {},
@@ -59,11 +59,11 @@ Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that cu
   };
 ```
 
-Add an `atomic_chat` entry alongside `nanoclaw`:
+Add an `atomic_chat` entry alongside `clawie`:
 
 ```ts
   const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    nanoclaw: {
+    clawie: {
       command: 'bun',
       args: ['run', mcpServerPath],
       env: {},
@@ -81,10 +81,10 @@ Add an `atomic_chat` entry alongside `nanoclaw`:
 
 ### Add the tool glob to the allowlist
 
-Edit `container/agent-runner/src/providers/claude.ts`. Find `'mcp__nanoclaw__*',` in the `TOOL_ALLOWLIST` array and add `'mcp__atomic_chat__*',` on the following line:
+Edit `container/agent-runner/src/providers/claude.ts`. Find `'mcp__clawie__*',` in the `TOOL_ALLOWLIST` array and add `'mcp__atomic_chat__*',` on the following line:
 
 ```ts
-  'mcp__nanoclaw__*',
+  'mcp__clawie__*',
   'mcp__atomic_chat__*',
 ];
 ```
@@ -182,7 +182,7 @@ ATOMIC_CHAT_API_KEY=sk-...
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -203,7 +203,7 @@ Tell the user:
 ### Check logs if needed
 
 ```bash
-tail -f logs/nanoclaw.log | grep -i atomic
+tail -f logs/clawie.log | grep -i atomic
 ```
 
 Look for:

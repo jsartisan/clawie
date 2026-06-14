@@ -3,7 +3,7 @@ import type { Migration } from './index.js';
 /**
  * Single-instance multi-tenancy: workspaces.
  *
- * A workspace is a tenant boundary inside one nanoclaw install. Scoping is
+ * A workspace is a tenant boundary inside one clawie install. Scoping is
  * deliberately shallow — only three tables carry `workspace_id`:
  *
  *   portal_accounts  — which workspace a signed-in human belongs to

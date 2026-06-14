@@ -1,12 +1,12 @@
 {
-  "name": "nanoclaw",
+  "name": "clawie",
   "version": "2.0.72",
   "description": "Personal Claude assistant. Lightweight, secure, customizable.",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "main": "dist/index.js",
   "bin": {
-    "ncl": "bin/ncl"
+    "clawie": "bin/clawie"
   },
   "scripts": {
     "build": "tsc",
@@ -19,7 +19,7 @@
     "prepare": "husky",
     "setup": "tsx setup/index.ts",
     "setup:auto": "tsx setup/auto.ts",
-    "ncl": "tsx src/cli/client.ts",
+    "clawie": "tsx src/cli/client.ts",
     "chat": "tsx scripts/chat.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "lint": "eslint src/",

@@ -1,7 +1,7 @@
 /**
- * The NanoClaw claw mark — three tapered ink slashes. Inherits color via
+ * The Clawie claw mark — three tapered ink slashes. Inherits color via
  * currentColor so it works on any surface. Canonical source of the paths:
- * assets/brand/nanoclaw-mark.svg.
+ * assets/brand/clawie-mark.svg.
  */
 export function BrandMark({ className }: { className?: string }) {
   return (

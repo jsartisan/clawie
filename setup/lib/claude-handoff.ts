@@ -116,7 +116,7 @@ export async function offerClaudeHandoff(ctx: HandoffContext): Promise<boolean> 
  * Sentinel returned by `validateWithHelpEscape` when the user types `?`.
  * The caller compares against this to decide whether to trigger a handoff.
  */
-export const HELP_ESCAPE_SENTINEL = '__NANOCLAW_HELP_ESCAPE__';
+export const HELP_ESCAPE_SENTINEL = '__CLAWIE_HELP_ESCAPE__';
 
 /**
  * Wrap a clack `validate` callback so typing `?` short-circuits validation
@@ -166,7 +166,7 @@ function isClaudeUsable(): boolean {
 
 function buildSystemPrompt(ctx: HandoffContext): string {
   const lines: string[] = [
-    `The user is running NanoClaw's interactive \`setup:auto\` flow to wire the ${ctx.channel} channel.`,
+    `The user is running Clawie's interactive \`setup:auto\` flow to wire the ${ctx.channel} channel.`,
     `They got stuck at the step: "${ctx.step}" (${ctx.stepDescription}) and asked for help.`,
     '',
     "Your job: help them complete this specific step and get back to setup.",
@@ -205,7 +205,7 @@ function buildSystemPrompt(ctx: HandoffContext): string {
 }
 
 /**
- * Dispatcher: checks NANOCLAW_SETUP_ASSIST_MODE and delegates to either
+ * Dispatcher: checks CLAWIE_SETUP_ASSIST_MODE and delegates to either
  * the interactive failure handoff (default) or the non-interactive assist.
  *
  * Drop-in replacement for `offerClaudeAssist` at failure call sites.
@@ -214,7 +214,7 @@ export async function offerClaudeOnFailure(
   ctx: AssistContext,
   projectRoot: string = process.cwd(),
 ): Promise<boolean> {
-  if (process.env.NANOCLAW_SETUP_ASSIST_MODE === 'true' || process.env.NANOCLAW_SETUP_ASSIST_MODE === '1') {
+  if (process.env.CLAWIE_SETUP_ASSIST_MODE === 'true' || process.env.CLAWIE_SETUP_ASSIST_MODE === '1') {
     return offerClaudeAssist(ctx, projectRoot);
   }
   return offerFailureHandoff(ctx, projectRoot);
@@ -232,7 +232,7 @@ async function offerFailureHandoff(
   ctx: AssistContext,
   projectRoot: string,
 ): Promise<boolean> {
-  if (process.env.NANOCLAW_SKIP_CLAUDE_ASSIST === '1') return false;
+  if (process.env.CLAWIE_SKIP_CLAUDE_ASSIST === '1') return false;
   if (!(await ensureClaudeReady(projectRoot))) return false;
 
   const want = ensureAnswer(
@@ -289,7 +289,7 @@ function buildFailureSystemPrompt(ctx: AssistContext, projectRoot: string): stri
   ].filter((v, i, a) => a.indexOf(v) === i);
 
   const lines: string[] = [
-    "The user is running NanoClaw's interactive setup flow and hit a failure.",
+    "The user is running Clawie's interactive setup flow and hit a failure.",
     '',
     `Failed step: ${ctx.stepName}`,
     `Error: ${ctx.msg}`,

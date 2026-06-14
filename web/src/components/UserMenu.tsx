@@ -42,7 +42,7 @@ export function UserMenu() {
         aria-label="Menu"
         className="hover:bg-accent pressed:bg-accent flex cursor-default items-center rounded-full p-0.5 transition-colors outline-none"
       >
-        <Avatar name="NanoClaw" size="sm" className="size-7" />
+        <Avatar name="Clawie" size="sm" className="size-7" />
       </Button>
       <Menu className="w-60" placement="bottom end">
         <Header className="px-2 py-1.5">

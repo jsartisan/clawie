@@ -1,17 +1,17 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/nanoclaw-wordmark-dark.svg">
-    <img src="assets/brand/nanoclaw-wordmark.svg" alt="NanoClaw" width="296">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/clawie-wordmark-dark.svg">
+    <img src="assets/brand/clawie-wordmark.svg" alt="Clawie" width="296">
   </picture>
 </p>
 
 <p align="center">
-  An AI assistant that runs agents securely in their own containers. Lightweight, built to be easily understood and completely customized for your needs.
+  An AI assistant that runs agents securely in their own containers. Lightweight, built to be easily understood and completely customized for your needs. Built on top of <a href="https://github.com/nanocoai/nanoclaw">nanoclaw</a>.
 </p>
 
 <p align="center">
-  <a href="https://nanoclaw.dev">nanoclaw.dev</a>&nbsp; • &nbsp;
-  <a href="https://docs.nanoclaw.dev">docs</a>&nbsp; • &nbsp;
+  <a href="https://clawie.dev">clawie.dev</a>&nbsp; • &nbsp;
+  <a href="https://docs.clawie.dev">docs</a>&nbsp; • &nbsp;
   <a href="README_zh.md">中文</a>&nbsp; • &nbsp;
   <a href="README_ja.md">日本語</a>&nbsp; • &nbsp;
   <a href="https://discord.gg/VDdww8qS42"><img src="https://img.shields.io/discord/1470188214710046894?label=Discord&logo=discord&v=2" alt="Discord" valign="middle"></a>&nbsp; • &nbsp;
@@ -20,29 +20,29 @@
 
 ---
 
-## Why I Built NanoClaw
+## Why I Built Clawie
 
 [OpenClaw](https://github.com/openclaw/openclaw) is an impressive project, but I wouldn't have been able to sleep if I had given complex software I didn't understand full access to my life. OpenClaw has nearly half a million lines of code, 53 config files, and 70+ dependencies. Its security is at the application level (allowlists, pairing codes) rather than true OS-level isolation. Everything runs in one Node process with shared memory.
 
-NanoClaw provides that same core functionality, but in a codebase small enough to understand: one process and a handful of files. Claude agents run in their own Linux containers with filesystem isolation, not merely behind permission checks.
+Clawie provides that same core functionality, but in a codebase small enough to understand: one process and a handful of files. Claude agents run in their own Linux containers with filesystem isolation, not merely behind permission checks.
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/nanocoai/nanoclaw.git nanoclaw-v2
-cd nanoclaw-v2
-bash nanoclaw.sh
+git clone https://github.com/nanocoai/clawie.git clawie-v2
+cd clawie-v2
+bash clawie.sh
 ```
 
-`nanoclaw.sh` walks you from a fresh machine to a named agent you can message. It installs Node, pnpm, and Docker if missing, registers your Anthropic credential with OneCLI, builds the agent container, and pairs your first channel (Telegram, Discord, WhatsApp, or a local CLI). If a step fails, Claude Code is invoked automatically to diagnose and resume from where it broke.
+`clawie.sh` walks you from a fresh machine to a named agent you can message. It installs Node, pnpm, and Docker if missing, registers your Anthropic credential with OneCLI, builds the agent container, and pairs your first channel (Telegram, Discord, WhatsApp, or a local CLI). If a step fails, Claude Code is invoked automatically to diagnose and resume from where it broke.
 
 ## Philosophy
 
-**Small enough to understand.** One process, a few source files and no microservices. If you want to understand the full NanoClaw codebase, just ask Claude Code to walk you through it.
+**Small enough to understand.** One process, a few source files and no microservices. If you want to understand the full Clawie codebase, just ask Claude Code to walk you through it.
 
 **Secure by isolation.** Agents run in Linux containers and they can only see what's explicitly mounted. Bash access is safe because commands run inside the container, not on your host.
 
-**Built for the individual user.** NanoClaw isn't a monolithic framework; it's software that fits each user's exact needs. Instead of becoming bloatware, NanoClaw is designed to be bespoke. You make your own fork and have Claude Code modify it to match your needs.
+**Built for the individual user.** Clawie isn't a monolithic framework; it's software that fits each user's exact needs. Instead of becoming bloatware, Clawie is designed to be bespoke. You make your own fork and have Claude Code modify it to match your needs.
 
 **Customization = code changes.** No configuration sprawl. Want different behavior? Modify the code. The codebase is small enough that it's safe to make changes.
 
@@ -50,7 +50,7 @@ bash nanoclaw.sh
 
 **Skills over features.** Trunk ships the registry and infrastructure, not specific channel adapters or alternative agent providers. Channels (Discord, Slack, Telegram, WhatsApp, …) live on a long-lived `channels` branch; alternative providers (OpenCode, Ollama) live on `providers`. You run `/add-telegram`, `/add-opencode`, etc. and the skill copies exactly the module(s) you need into your fork. No feature you didn't ask for.
 
-**Best harness, best model.** NanoClaw natively uses Claude Code via Anthropic's official Claude Agent SDK, so you get the latest Claude models and Claude Code's full toolset, including the ability to modify and expand your own NanoClaw fork. Other providers are drop-in options: `/add-codex` for OpenAI's Codex (ChatGPT subscription or API key), `/add-opencode` for OpenRouter, Google, DeepSeek and more via OpenCode, and `/add-ollama-provider` for local open-weight models. Provider is configurable per agent group.
+**Best harness, best model.** Clawie natively uses Claude Code via Anthropic's official Claude Agent SDK, so you get the latest Claude models and Claude Code's full toolset, including the ability to modify and expand your own Clawie fork. Other providers are drop-in options: `/add-codex` for OpenAI's Codex (ChatGPT subscription or API key), `/add-opencode` for OpenRouter, Google, DeepSeek and more via OpenCode, and `/add-ollama-provider` for local open-weight models. Provider is configurable per agent group.
 
 ## What It Supports
 
@@ -81,27 +81,27 @@ From a channel you own or administer, you can manage groups and tasks:
 
 ## Web Portal
 
-An optional web portal makes NanoClaw feel like a product instead of a CLI: sign in with email + password (created on first visit), create agents with a personality wizard, chat with them in the browser, connect Telegram/Slack bots with live token validation, enable integrations (web search, GitHub, docs…) per agent, and resolve approvals and scheduled routines from an inbox. Power-user resource tables (wirings, messaging groups, …) stay available under the sidebar's "Advanced" section.
+An optional web portal makes Clawie feel like a product instead of a CLI: sign in with email + password (created on first visit), create agents with a personality wizard, chat with them in the browser, connect Telegram/Slack bots with live token validation, enable integrations (web search, GitHub, docs…) per agent, and resolve approvals and scheduled routines from an inbox. Power-user resource tables (wirings, messaging groups, …) stay available under the sidebar's "Advanced" section.
 
 It lives in `web/` as a separate [TanStack Router](https://tanstack.com/router) SPA (its own Bun package tree, like `container/agent-runner/`). The host exposes a JSON API over a loopback-only HTTP server (`127.0.0.1:4100`). Browser sessions use httpOnly cookies; scripts can still use the `NCL_PORTAL_TOKEN` bearer token generated into `.env`. Don't expose the port off your machine.
 
 Run the host and the UI dev server together with [go-task](https://taskfile.dev):
 
 ```bash
-task dev   # NanoClaw host (:4100 portal API) + Vite UI dev server (:4101)
+task dev   # Clawie host (:4100 portal API) + Vite UI dev server (:4101)
 ```
 
 Then open `http://localhost:4101` and create your account. For a production build, run `task build` — the host serves the built SPA from `web/dist` on `:4100` directly. The portal port is configurable via `NCL_PORTAL_PORT` in `.env` (default 4100).
 
 ## Multi-Tenancy (workspaces)
 
-One NanoClaw instance can host many users. Portal signup is open: the first account becomes the **operator** (sees everything, keeps the Advanced resource pages and `ncl workspaces` tooling), and every later signup gets its own isolated **workspace** — its own agents, channel connections, chats, approvals, and routines, invisible to other workspaces. Agent containers were already isolated per agent; workspaces add the data boundary on top, enforced server-side in the dispatch layer (cross-workspace lookups answer "not found").
+One Clawie instance can host many users. Portal signup is open: the first account becomes the **operator** (sees everything, keeps the Advanced resource pages and `clawie workspaces` tooling), and every later signup gets its own isolated **workspace** — its own agents, channel connections, chats, approvals, and routines, invisible to other workspaces. Agent containers were already isolated per agent; workspaces add the data boundary on top, enforced server-side in the dispatch layer (cross-workspace lookups answer "not found").
 
-The operator can meter tenants with `ncl workspaces usage` — per-workspace counts of accounts, agents, connected bots, sessions, and pending approvals.
+The operator can meter tenants with `clawie workspaces usage` — per-workspace counts of accounts, agents, connected bots, sessions, and pending approvals.
 
 ## Customizing
 
-NanoClaw doesn't use configuration files. To make changes, just tell Claude Code what you want:
+Clawie doesn't use configuration files. To make changes, just tell Claude Code what you want:
 
 - "Change the trigger word to @Bob"
 - "Remember in the future to make responses shorter and more direct"
@@ -167,15 +167,15 @@ Docker provides cross-platform support (macOS, Linux and Windows via WSL2) and a
 
 **Can I run this on Linux or Windows?**
 
-Yes. Docker is the default runtime and works on macOS, Linux, and Windows (via WSL2). Just run `bash nanoclaw.sh`.
+Yes. Docker is the default runtime and works on macOS, Linux, and Windows (via WSL2). Just run `bash clawie.sh`.
 
 **Is this secure?**
 
-Agents run in containers, not behind application-level permission checks. They can only access explicitly mounted directories. Credentials never enter the container — outbound API requests route through [OneCLI's Agent Vault](https://github.com/onecli/onecli), which injects authentication at the proxy level and supports rate limits and access policies. You should still review what you're running, but the codebase is small enough that you actually can. See the [security documentation](https://docs.nanoclaw.dev/concepts/security) for the full security model.
+Agents run in containers, not behind application-level permission checks. They can only access explicitly mounted directories. Credentials never enter the container — outbound API requests route through [OneCLI's Agent Vault](https://github.com/onecli/onecli), which injects authentication at the proxy level and supports rate limits and access policies. You should still review what you're running, but the codebase is small enough that you actually can. See the [security documentation](https://docs.clawie.dev/concepts/security) for the full security model.
 
 **Why no configuration files?**
 
-We don't want configuration sprawl. Every user should customize NanoClaw so that the code does exactly what they want, rather than configuring a generic system. If you prefer having config files, you can tell Claude to add them.
+We don't want configuration sprawl. Every user should customize Clawie so that the code does exactly what they want, rather than configuring a generic system. If you prefer having config files, you can tell Claude to add them.
 
 **Can I use third-party or open-source models?**
 
@@ -190,11 +190,11 @@ ANTHROPIC_AUTH_TOKEN=your-token-here
 
 **How do I debug issues?**
 
-Ask Claude Code. "Why isn't the scheduler running?" "What's in the recent logs?" "Why did this message not get a response?" That's the AI-native approach that underlies NanoClaw.
+Ask Claude Code. "Why isn't the scheduler running?" "What's in the recent logs?" "Why did this message not get a response?" That's the AI-native approach that underlies Clawie.
 
 **Why isn't the setup working for me?**
 
-If a step fails, `nanoclaw.sh` hands off to Claude Code to diagnose and resume. If that doesn't resolve it, run `claude`, then `/debug`. If Claude identifies an issue likely to affect other users, open a PR against the relevant setup step or skill.
+If a step fails, `clawie.sh` hands off to Claude Code to diagnose and resume. If that doesn't resolve it, run `claude`, then `/debug`. If Claude identifies an issue likely to affect other users, open a PR against the relevant setup step or skill.
 
 **What changes will be accepted into the codebase?**
 
@@ -210,7 +210,7 @@ Questions? Ideas? [Join the Discord](https://discord.gg/VDdww8qS42).
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for breaking changes, or the [full release history](https://docs.nanoclaw.dev/changelog) on the documentation site.
+See [CHANGELOG.md](CHANGELOG.md) for breaking changes, or the [full release history](https://docs.clawie.dev/changelog) on the documentation site.
 
 ## License
 

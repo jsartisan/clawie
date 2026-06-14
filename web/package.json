@@ -1,9 +1,9 @@
 {
-  "name": "nanoclaw-web",
+  "name": "clawie-web",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "NanoClaw admin web UI (TanStack Router SPA). Separate tree — uses Bun, not the host pnpm.",
+  "description": "Clawie admin web UI (TanStack Router SPA). Separate tree — uses Bun, not the host pnpm.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

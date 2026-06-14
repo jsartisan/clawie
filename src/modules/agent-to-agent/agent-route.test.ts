@@ -19,10 +19,10 @@ vi.mock('../../container-runner.js', () => ({
 
 vi.mock('../../config.js', async () => {
   const actual = await vi.importActual('../../config.js');
-  return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-a2a-route' };
+  return { ...actual, DATA_DIR: '/tmp/clawie-test-a2a-route' };
 });
 
-const TEST_DIR = '/tmp/nanoclaw-test-a2a-route';
+const TEST_DIR = '/tmp/clawie-test-a2a-route';
 
 function now(): string {
   return new Date().toISOString();

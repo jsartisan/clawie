@@ -13,7 +13,7 @@ You need a **dedicated GitHub bot account** (not your personal account). The ada
 
 ## Install
 
-NanoClaw doesn't ship channels in trunk. This skill copies the GitHub adapter in from the `channels` branch.
+Clawie doesn't ship channels in trunk. This skill copies the GitHub adapter in from the `channels` branch.
 
 ### Pre-flight (idempotent)
 
@@ -138,7 +138,7 @@ If you're in the middle of `/setup`, return to the setup flow now.
 
 Otherwise, restart the service to pick up the new channel.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh

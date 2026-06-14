@@ -6,9 +6,9 @@
  * and hyphens, up to 50 characters. A violation returns `400 Bad Request` from
  * `POST /api/agents`.
  *
- * NanoClaw agent-group ids arrive in two shapes:
+ * Clawie agent-group ids arrive in two shapes:
  *   - `init-first-agent` / create-agent → `ag-<ts>-<rand>` (already compliant)
- *   - `ncl groups create` → `crypto.randomUUID()` → e.g. `1d864ec8-…` which
+ *   - `clawie groups create` → `crypto.randomUUID()` → e.g. `1d864ec8-…` which
  *     starts with a digit ~60% of the time and is therefore rejected.
  *
  * `toOneCLIIdentifier` maps any group id to a deterministic compliant identifier

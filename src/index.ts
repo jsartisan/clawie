@@ -1,5 +1,5 @@
 /**
- * NanoClaw — main entry point.
+ * Clawie — main entry point.
  *
  * Thin orchestrator: init DB, run migrations, start channel adapters,
  * start delivery polls, start sweep, handle shutdown.
@@ -54,7 +54,7 @@ import './channels/index.js';
 // append registry-based modules. Imported for side effects (registrations).
 import './modules/index.js';
 
-// CLI command barrel — populates the `ncl` registry before the CLI server
+// CLI command barrel — populates the `clawie` registry before the CLI server
 // accepts connections.
 import './cli/commands/index.js';
 import './cli/delivery-action.js';
@@ -65,7 +65,7 @@ import type { ChannelAdapter, ChannelSetup } from './channels/adapter.js';
 import { initChannelAdapters, teardownChannelAdapters, getChannelAdapter } from './channels/channel-registry.js';
 
 async function main(): Promise<void> {
-  log.info('NanoClaw starting');
+  log.info('Clawie starting');
 
   // 0. Circuit breaker — backoff on rapid restarts
   await enforceStartupBackoff();
@@ -189,13 +189,13 @@ async function main(): Promise<void> {
   startHostSweep();
   log.info('Host sweep started');
 
-  // 7. Start the `ncl` CLI socket server (data/ncl.sock).
+  // 7. Start the `clawie` CLI socket server (data/clawie.sock).
   await startCliServer();
 
   // 8. Start the portal server (loopback, token-authenticated, :4100).
   await startPortalServer();
 
-  log.info('NanoClaw running');
+  log.info('Clawie running');
 }
 
 /** Graceful shutdown. */

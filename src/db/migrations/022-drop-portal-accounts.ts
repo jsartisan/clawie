@@ -1,7 +1,7 @@
 import type { Migration } from './index.js';
 
 /**
- * Remove email/password login — NanoClaw is a personal agent, not multi-user.
+ * Remove email/password login — Clawie is a personal agent, not multi-user.
  * Portal access is now gated only by the bearer token (NCL_PORTAL_TOKEN) and
  * Origin/Host validation. No accounts, no sessions, no passwords.
  */

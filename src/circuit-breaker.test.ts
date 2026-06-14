@@ -18,7 +18,7 @@ const { TEST_DIR } = vi.hoisted(() => {
   const nodePath = require('path') as typeof import('path');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nodeOs = require('os') as typeof import('os');
-  return { TEST_DIR: nodePath.join(nodeOs.tmpdir(), 'nanoclaw-cb-test') };
+  return { TEST_DIR: nodePath.join(nodeOs.tmpdir(), 'clawie-cb-test') };
 });
 const CB_PATH = path.join(TEST_DIR, 'circuit-breaker.json');
 

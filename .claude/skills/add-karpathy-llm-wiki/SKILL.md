@@ -1,11 +1,11 @@
 ---
 name: add-karpathy-llm-wiki
-description: Add a persistent wiki knowledge base to a NanoClaw group. Based on Karpathy's LLM Wiki pattern. Triggers on "add wiki", "wiki", "knowledge base", "llm wiki", "karpathy wiki".
+description: Add a persistent wiki knowledge base to a Clawie group. Based on Karpathy's LLM Wiki pattern. Triggers on "add wiki", "wiki", "knowledge base", "llm wiki", "karpathy wiki".
 ---
 
 # Add Karpathy LLM Wiki
 
-Set up a persistent wiki knowledge base on NanoClaw, based on Karpathy's LLM Wiki pattern.
+Set up a persistent wiki knowledge base on Clawie, based on Karpathy's LLM Wiki pattern.
 
 ## Step 1: Read the pattern
 
@@ -75,7 +75,7 @@ If yes, ask the agent to schedule the lint task using the `schedule_task` MCP to
 
 ## Step 6: Restart
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh

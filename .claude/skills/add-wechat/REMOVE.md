@@ -41,7 +41,7 @@ DELETE FROM messaging_groups WHERE channel_type = 'wechat';
 
 ### 6. Rebuild and restart
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 pnpm run build

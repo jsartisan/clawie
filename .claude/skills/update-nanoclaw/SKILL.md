@@ -1,17 +1,17 @@
 ---
-name: update-nanoclaw
-description: Efficiently bring upstream NanoClaw updates into a customized install, with preview, selective cherry-pick, and low token usage.
+name: update-clawie
+description: Efficiently bring upstream Clawie updates into a customized install, with preview, selective cherry-pick, and low token usage.
 ---
 
 # About
 
-Your NanoClaw fork drifts from upstream as you customize it. This skill pulls upstream changes into your install without losing your modifications.
+Your Clawie fork drifts from upstream as you customize it. This skill pulls upstream changes into your install without losing your modifications.
 
-Run `/update-nanoclaw` in Claude Code.
+Run `/update-clawie` in Claude Code.
 
 ## How it works
 
-**Preflight**: checks for clean working tree (`git status --porcelain`). If `upstream` remote is missing, asks you for the URL (defaults to `https://github.com/nanocoai/nanoclaw.git`) and adds it. Detects the upstream branch name (`main` or `master`).
+**Preflight**: checks for clean working tree (`git status --porcelain`). If `upstream` remote is missing, asks you for the URL (defaults to `https://github.com/nanocoai/clawie.git`) and adds it. Detects the upstream branch name (`main` or `master`).
 
 **Backup**: creates a timestamped backup branch and tag (`backup/pre-update-<hash>-<timestamp>`, `pre-update-<hash>-<timestamp>`) before touching anything. Safe to run multiple times.
 
@@ -51,7 +51,7 @@ Only opens files with actual conflicts. Uses `git log`, `git diff`, and `git sta
 ---
 
 # Goal
-Help a user with a customized NanoClaw install safely incorporate upstream changes without a fresh reinstall and without blowing tokens.
+Help a user with a customized Clawie install safely incorporate upstream changes without a fresh reinstall and without blowing tokens.
 
 # Operating principles
 - Never proceed with a dirty working tree.
@@ -69,7 +69,7 @@ If output is non-empty:
 Confirm remotes:
 - `git remote -v`
 If `upstream` is missing:
-- Ask the user for the upstream repo URL (default: `https://github.com/nanocoai/nanoclaw.git`).
+- Ask the user for the upstream repo URL (default: `https://github.com/nanocoai/clawie.git`).
 - Add it: `git remote add upstream <user-provided-url>`
 - Then: `git fetch upstream --prune`
 
@@ -114,7 +114,7 @@ Bucket the upstream changed files:
 - **Build/config** (`package.json`, `pnpm-lock.yaml`, `tsconfig*.json`): lockfile changes trigger dep install
 - **Other**: docs, tests, setup scripts, misc
 
-**Large drift check:** If the upstream commit count and age suggest the user has a lot of catching up to do, mention that `/migrate-nanoclaw` might be a better fit — it extracts customizations and reapplies them on clean upstream instead of merging. Offer it as an option but don't push.
+**Large drift check:** If the upstream commit count and age suggest the user has a lot of catching up to do, mention that `/migrate-clawie` might be a better fit — it extracts customizations and reapplies them on clean upstream instead of merging. Offer it as an option but don't push.
 
 Present these buckets to the user and ask them to choose one path using AskUserQuestion:
 - A) **Full update**: merge all upstream changes
@@ -270,7 +270,7 @@ Show:
 Tell the user:
 - To rollback: `git reset --hard <backup-tag-from-step-1>`
 - Backup branch also exists: `backup/pre-update-<HASH>-<TIMESTAMP>`
-- Restart the service to apply changes. The unit/label names are per-install — derive them with `setup/lib/install-slug.sh`. Run from your NanoClaw project root:
+- Restart the service to apply changes. The unit/label names are per-install — derive them with `setup/lib/install-slug.sh`. Run from your Clawie project root:
   - **macOS (Darwin)**: `source setup/lib/install-slug.sh && launchctl kickstart -k gui/$(id -u)/$(launchd_label)`
   - **Linux**: `source setup/lib/install-slug.sh && systemctl --user restart $(systemd_unit)` (or, if you want to confirm the unit name first: `systemctl --user list-units --type=service | grep "$(. setup/lib/install-slug.sh && systemd_unit)"`)
   - **Manual** (no service found): restart `pnpm run dev`
@@ -278,5 +278,5 @@ Tell the user:
 
 ## Diagnostics
 
-1. Use the Read tool to read `.claude/skills/update-nanoclaw/diagnostics.md`.
+1. Use the Read tool to read `.claude/skills/update-clawie/diagnostics.md`.
 2. Follow every step in that file before finishing.

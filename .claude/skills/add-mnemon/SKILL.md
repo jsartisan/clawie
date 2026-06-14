@@ -63,7 +63,7 @@ ENV MNEMON_DATA_DIR=/home/node/.claude/mnemon
 
 ```bash
 #!/bin/bash
-# NanoClaw agent container entrypoint.
+# Clawie agent container entrypoint.
 #
 # ...existing header comment...
 
@@ -82,14 +82,14 @@ exec bun run /app/src/index.ts < /tmp/input.json
 
 ```bash
 ./container/build.sh
-docker run --rm --entrypoint mnemon nanoclaw-agent:latest --version
+docker run --rm --entrypoint mnemon clawie-agent:latest --version
 ```
 
 ## Phase 3: Restart and Verify
 
 ### Restart the service
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -102,13 +102,13 @@ systemctl --user restart $(systemd_unit)              # Linux
 After the next container starts, check that setup ran:
 
 ```bash
-docker logs $(docker ps --filter name=nanoclaw-v2 --format '{{.Names}}' | head -1) 2>&1 | grep -i mnemon
+docker logs $(docker ps --filter name=clawie-v2 --format '{{.Names}}' | head -1) 2>&1 | grep -i mnemon
 ```
 
 Then inspect the hooks inside the running container:
 
 ```bash
-docker exec $(docker ps --filter name=nanoclaw-v2 --format '{{.Names}}' | head -1) \
+docker exec $(docker ps --filter name=clawie-v2 --format '{{.Names}}' | head -1) \
   cat /home/node/.claude/settings.json | grep -A5 mnemon
 ```
 
@@ -118,7 +118,7 @@ Have a conversation with the agent, then start a new session and reference somet
 
 ## Phase 2 (OpenCode path) — context injection
 
-mnemon hooks don't fire under OpenCode. Instead, the agent-runner injects mnemon context directly into every prompt via `wrapPromptWithContext()` in `container/agent-runner/src/providers/opencode.ts`. This is already implemented in NanoClaw — no code changes needed if you're on current `ester`/`main`.
+mnemon hooks don't fire under OpenCode. Instead, the agent-runner injects mnemon context directly into every prompt via `wrapPromptWithContext()` in `container/agent-runner/src/providers/opencode.ts`. This is already implemented in Clawie — no code changes needed if you're on current `ester`/`main`.
 
 **How it works:** On each prompt, `readMnemonContext()` checks for `MNEMON_DATA_DIR` (set by the Dockerfile `ENV`). If the env var is present, it reads `$MNEMON_DATA_DIR/prompt/guide.md` (mnemon's custom prompt guide, written by `mnemon setup`) or falls back to an inline guide. The content is prepended as a `<system>` block, instructing the agent to run `mnemon recall` at the start of relevant tasks and `mnemon remember` after key decisions.
 
@@ -143,7 +143,7 @@ Start a session and ask the agent to run `mnemon status`. It should report empty
 
 ```bash
 # Also confirm the binary is present in the image:
-docker run --rm --entrypoint mnemon nanoclaw-agent:latest --version
+docker run --rm --entrypoint mnemon clawie-agent:latest --version
 ```
 
 ## Memory Storage
@@ -151,7 +151,7 @@ docker run --rm --entrypoint mnemon nanoclaw-agent:latest --version
 Mnemon writes to `/home/node/.claude/mnemon/` inside the container, which maps to the per-agent-group `.claude/` directory on the host. To find the exact host path:
 
 ```bash
-docker inspect $(docker ps --filter name=nanoclaw-v2 --format '{{.Names}}' | head -1) \
+docker inspect $(docker ps --filter name=clawie-v2 --format '{{.Names}}' | head -1) \
   --format '{{range .Mounts}}{{if eq .Destination "/home/node/.claude"}}{{.Source}}{{end}}{{end}}'
 ```
 
@@ -159,7 +159,7 @@ To reset all memory for an agent, stop the container and delete the `mnemon/` su
 
 ## Migration Guide Update
 
-If you are using `/migrate-nanoclaw`, add these entries to `.nanoclaw-migrations/05-dockerfile.md`:
+If you are using `/migrate-clawie`, add these entries to `.clawie-migrations/05-dockerfile.md`:
 
 **Dockerfile — after AWS CLI, before Bun runtime:**
 ```dockerfile

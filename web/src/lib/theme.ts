@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export type ThemeId = 'light' | 'dark' | 'system';
 
-const STORAGE_KEY = 'nanoclaw-theme';
+const STORAGE_KEY = 'clawie-theme';
 const MEDIA_QUERY = '(prefers-color-scheme: dark)';
 
 function systemPrefersDark(): boolean {

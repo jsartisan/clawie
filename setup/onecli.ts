@@ -321,7 +321,7 @@ export async function run(args: string[]): Promise<void> {
     }
     writeEnvOnecliUrl(remoteUrl);
     log.info('Wrote ONECLI_URL to .env', { url: remoteUrl });
-    const remoteToken = process.env.NANOCLAW_ONECLI_API_TOKEN?.trim();
+    const remoteToken = process.env.CLAWIE_ONECLI_API_TOKEN?.trim();
     if (remoteToken) {
       // Two auth surfaces: `onecli auth login` persists the key for CLI
       // calls during setup itself (e.g. detecting an existing Anthropic

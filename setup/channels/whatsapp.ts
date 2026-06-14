@@ -359,7 +359,7 @@ function readAuthedPhone(): string {
 
 async function restartService(): Promise<void> {
   const s = p.spinner();
-  s.start('Restarting NanoClaw so it sees your WhatsApp credentials…');
+  s.start('Restarting Clawie so it sees your WhatsApp credentials…');
   const start = Date.now();
   const platform = process.platform;
   try {
@@ -385,7 +385,7 @@ async function restartService(): Promise<void> {
     // Give the adapter a moment to reconnect before init-first-agent's
     // welcome DM hits the delivery path.
     await new Promise((r) => setTimeout(r, 5000));
-    s.stop(`NanoClaw restarted. ${k.dim(`(${fmtDuration(Date.now() - start)})`)}`);
+    s.stop(`Clawie restarted. ${k.dim(`(${fmtDuration(Date.now() - start)})`)}`);
     setupLog.step('whatsapp-restart', 'success', Date.now() - start, {
       PLATFORM: platform,
     });
@@ -460,7 +460,7 @@ function writeAssistantHasOwnNumber(): void {
 }
 
 async function resolveAgentName(): Promise<string> {
-  const preset = process.env.NANOCLAW_AGENT_NAME?.trim();
+  const preset = process.env.CLAWIE_AGENT_NAME?.trim();
   if (preset) {
     setupLog.userInput('agent_name', preset);
     return preset;

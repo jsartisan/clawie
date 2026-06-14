@@ -3,7 +3,7 @@ name: debug
 description: Debug container agent issues. Use when things aren't working, container fails, authentication problems, or to understand how the container system works. Covers logs, environment variables, mounts, and common issues.
 ---
 
-# NanoClaw Container Debugging
+# Clawie Container Debugging
 
 This guide covers debugging the containerized agent execution system.
 
@@ -30,8 +30,8 @@ src/container-runner.ts               container/agent-runner/
 
 | Log | Location | Content |
 |-----|----------|---------|
-| **Main app logs** | `logs/nanoclaw.log` | Host-side WhatsApp, routing, container spawning |
-| **Main app errors** | `logs/nanoclaw.error.log` | Host-side errors |
+| **Main app logs** | `logs/clawie.log` | Host-side WhatsApp, routing, container spawning |
+| **Main app errors** | `logs/clawie.error.log` | Host-side errors |
 | **Container run logs** | `groups/{folder}/logs/container-*.log` | Per-run: input, mounts, stderr, stdout |
 | **Claude sessions** | `~/.claude/projects/` | Claude Code session history |
 
@@ -59,44 +59,44 @@ Debug level shows:
 
 ### 1. "No adapter for channel type" / Messages silently lost (null platformMsgId)
 
-**Symptom:** The bot stops replying. `logs/nanoclaw.error.log` shows repeated:
+**Symptom:** The bot stops replying. `logs/clawie.error.log` shows repeated:
 ```
 WARN No adapter for channel type channelType="telegram"
 WARN No adapter for channel type channelType="signal"
 ```
 The main log shows "Message delivered" entries with `platformMsgId=undefined` — meaning the delivery poll ran, found no adapter, and permanently marked the message as delivered without sending it.
 
-**Root cause: two NanoClaw service instances running simultaneously.**
+**Root cause: two Clawie service instances running simultaneously.**
 
-When a second service instance (often `nanoclaw-v2-<id>.service` running alongside `nanoclaw.service`) is active with a stale binary, it has no channel adapters registered. Its delivery poll races against the working instance and wins — permanently marking outbound messages as delivered without ever sending them.
+When a second service instance (often `clawie-v2-<id>.service` running alongside `clawie.service`) is active with a stale binary, it has no channel adapters registered. Its delivery poll races against the working instance and wins — permanently marking outbound messages as delivered without ever sending them.
 
 **Diagnosis:**
 ```bash
 # Check for duplicate running instances
-ps aux | grep 'nanoclaw/dist/index.js' | grep -v grep
+ps aux | grep 'clawie/dist/index.js' | grep -v grep
 
 # Check which services are active
-systemctl --user list-units 'nanoclaw*' --all
+systemctl --user list-units 'clawie*' --all
 
 # Confirm channel adapters registered by the current process
-grep "Channel adapter started" logs/nanoclaw.log | tail -10
+grep "Channel adapter started" logs/clawie.log | tail -10
 ```
 
 **Fix:**
 1. Identify which service has the correct binary and EnvironmentFile (the one showing `signal`, `telegram`, `cli` all started in the log).
 2. Stop and disable the stale duplicate service:
    ```bash
-   systemctl --user stop nanoclaw.service   # or whichever is the old one
-   systemctl --user disable nanoclaw.service
+   systemctl --user stop clawie.service   # or whichever is the old one
+   systemctl --user disable clawie.service
    ```
 3. If the remaining service unit is missing `EnvironmentFile`, add it:
    ```bash
    # Edit the service unit — add this line under [Service]:
-   # EnvironmentFile=/home/[user]/nanoclaw/.env
+   # EnvironmentFile=/home/[user]/clawie/.env
    systemctl --user daemon-reload
-   systemctl --user restart nanoclaw-v2-<id>.service
+   systemctl --user restart clawie-v2-<id>.service
    ```
-4. Verify only one instance runs: `ps aux | grep nanoclaw/dist/index.js | grep -v grep`
+4. Verify only one instance runs: `ps aux | grep clawie/dist/index.js | grep -v grep`
 
 **Note:** Messages that were marked delivered with a null `platform_message_id` cannot be automatically retried — they are permanently lost. The user must resend their message.
 
@@ -133,7 +133,7 @@ To verify env vars are reaching the container:
 ```bash
 echo '{}' | docker run -i \
   -v $(pwd)/data/env:/workspace/env-dir:ro \
-  --entrypoint /bin/bash nanoclaw-agent:latest \
+  --entrypoint /bin/bash clawie-agent:latest \
   -c 'export $(cat /workspace/env-dir/env | xargs); echo "OAuth: ${#CLAUDE_CODE_OAUTH_TOKEN} chars, API: ${#ANTHROPIC_API_KEY} chars"'
 ```
 
@@ -152,7 +152,7 @@ echo '{}' | docker run -i \
 
 To check what's mounted inside a container:
 ```bash
-docker run --rm --entrypoint /bin/bash nanoclaw-agent:latest -c 'ls -la /workspace/'
+docker run --rm --entrypoint /bin/bash clawie-agent:latest -c 'ls -la /workspace/'
 ```
 
 Expected structure:
@@ -174,7 +174,7 @@ Expected structure:
 
 The container runs as user `node` (uid 1000). Check ownership:
 ```bash
-docker run --rm --entrypoint /bin/bash nanoclaw-agent:latest -c '
+docker run --rm --entrypoint /bin/bash clawie-agent:latest -c '
   whoami
   ls -la /workspace/
   ls -la /app/
@@ -199,7 +199,7 @@ grep -A3 "Claude sessions" src/container-runner.ts
 ```bash
 docker run --rm --entrypoint /bin/bash \
   -v ~/.claude:/home/node/.claude \
-  nanoclaw-agent:latest -c '
+  clawie-agent:latest -c '
 echo "HOME=$HOME"
 ls -la $HOME/.claude/projects/ 2>&1 | head -5
 '
@@ -232,14 +232,14 @@ echo '{"prompt":"What is 2+2?","groupFolder":"test","chatJid":"test@g.us","isMai
   -v $(pwd)/data/env:/workspace/env-dir:ro \
   -v $(pwd)/groups/test:/workspace/group \
   -v $(pwd)/data/ipc:/workspace/ipc \
-  nanoclaw-agent:latest
+  clawie-agent:latest
 ```
 
 ### Test Claude Code directly:
 ```bash
 docker run --rm --entrypoint /bin/bash \
   -v $(pwd)/data/env:/workspace/env-dir:ro \
-  nanoclaw-agent:latest -c '
+  clawie-agent:latest -c '
   export $(cat /workspace/env-dir/env | xargs)
   claude -p "Say hello" --dangerously-skip-permissions --allowedTools ""
 '
@@ -247,7 +247,7 @@ docker run --rm --entrypoint /bin/bash \
 
 ### Interactive shell in container:
 ```bash
-docker run --rm -it --entrypoint /bin/bash nanoclaw-agent:latest
+docker run --rm -it --entrypoint /bin/bash clawie-agent:latest
 ```
 
 ## SDK Options Reference
@@ -291,7 +291,7 @@ docker builder prune -af
 docker images
 
 # Check what's in the image
-docker run --rm --entrypoint /bin/bash nanoclaw-agent:latest -c '
+docker run --rm --entrypoint /bin/bash clawie-agent:latest -c '
   echo "=== Node version ==="
   node --version
 
@@ -321,13 +321,13 @@ rm -rf data/sessions/
 # Clear sessions for a specific group
 rm -rf data/sessions/{groupFolder}/.claude/
 
-# Also clear the session ID from NanoClaw's tracking (stored in SQLite)
+# Also clear the session ID from Clawie's tracking (stored in SQLite)
 pnpm exec tsx scripts/q.ts store/messages.db "DELETE FROM sessions WHERE group_folder = '{groupFolder}'"
 ```
 
 To verify session resumption is working, check the logs for the same session ID across messages:
 ```bash
-grep "Session initialized" logs/nanoclaw.log | tail -5
+grep "Session initialized" logs/clawie.log | tail -5
 # Should show the SAME session ID for consecutive messages in the same group
 ```
 
@@ -363,7 +363,7 @@ cat data/ipc/{groupFolder}/current_tasks.json
 Run this to check common issues:
 
 ```bash
-echo "=== Checking NanoClaw Container Setup ==="
+echo "=== Checking Clawie Container Setup ==="
 
 echo -e "\n1. Authentication configured?"
 [ -f .env ] && (grep -q "CLAUDE_CODE_OAUTH_TOKEN=sk-" .env || grep -q "ANTHROPIC_API_KEY=sk-" .env) && echo "OK" || echo "MISSING - add CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY to .env"
@@ -375,7 +375,7 @@ echo -e "\n3. Container runtime running?"
 docker info &>/dev/null && echo "OK" || echo "NOT RUNNING - start Docker Desktop (macOS) or sudo systemctl start docker (Linux)"
 
 echo -e "\n4. Container image exists?"
-echo '{}' | docker run -i --entrypoint /bin/echo nanoclaw-agent:latest "OK" 2>/dev/null || echo "MISSING - run ./container/build.sh"
+echo '{}' | docker run -i --entrypoint /bin/echo clawie-agent:latest "OK" 2>/dev/null || echo "MISSING - run ./container/build.sh"
 
 echo -e "\n5. Session mount path correct?"
 grep -q "/home/node/.claude" src/container-runner.ts 2>/dev/null && echo "OK" || echo "WRONG - should mount to /home/node/.claude/, not /root/.claude/"
@@ -387,6 +387,6 @@ echo -e "\n7. Recent container logs?"
 ls -t groups/*/logs/container-*.log 2>/dev/null | head -3 || echo "No container logs yet"
 
 echo -e "\n8. Session continuity working?"
-SESSIONS=$(grep "Session initialized" logs/nanoclaw.log 2>/dev/null | tail -5 | awk '{print $NF}' | sort -u | wc -l)
+SESSIONS=$(grep "Session initialized" logs/clawie.log 2>/dev/null | tail -5 | awk '{print $NF}' | sort -u | wc -l)
 [ "$SESSIONS" -le 2 ] && echo "OK (recent sessions reusing IDs)" || echo "CHECK - multiple different session IDs, may indicate resumption issues"
 ```

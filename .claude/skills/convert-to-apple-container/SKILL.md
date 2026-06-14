@@ -5,7 +5,7 @@ description: Switch from Docker to Apple Container for macOS-native container is
 
 # Convert to Apple Container
 
-This skill switches NanoClaw's container runtime from Docker to Apple Container (macOS-only). It uses the skills engine for deterministic code changes, then walks through verification.
+This skill switches Clawie's container runtime from Docker to Apple Container (macOS-only). It uses the skills engine for deterministic code changes, then walks through verification.
 
 **What this changes:**
 - Container runtime binary: `docker` → `container`
@@ -58,7 +58,7 @@ git remote -v
 If `upstream` is missing, add it:
 
 ```bash
-git remote add upstream https://github.com/nanocoai/nanoclaw.git
+git remote add upstream https://github.com/nanocoai/clawie.git
 ```
 
 ### Merge the skill branch
@@ -111,7 +111,7 @@ echo "block in on en0 proto tcp to any port 3001" | sudo pfctl -ef -
 ```
 
 ```bash
-grep -q 'nanoclaw proxy' /etc/pf.conf 2>/dev/null || echo '# nanoclaw proxy — block LAN access to credential proxy
+grep -q 'clawie proxy' /etc/pf.conf 2>/dev/null || echo '# clawie proxy — block LAN access to credential proxy
 block in on en0 proto tcp to any port 3001' | sudo tee -a /etc/pf.conf > /dev/null
 ```
 
@@ -140,7 +140,7 @@ container system status || container system start
 ### Test basic execution
 
 ```bash
-echo '{}' | container run -i --entrypoint /bin/echo nanoclaw-agent:latest "Container OK"
+echo '{}' | container run -i --entrypoint /bin/echo clawie-agent:latest "Container OK"
 ```
 
 ### Test readonly mounts
@@ -149,7 +149,7 @@ echo '{}' | container run -i --entrypoint /bin/echo nanoclaw-agent:latest "Conta
 mkdir -p /tmp/test-ro && echo "test" > /tmp/test-ro/file.txt
 container run --rm --entrypoint /bin/bash \
   --mount type=bind,source=/tmp/test-ro,target=/test,readonly \
-  nanoclaw-agent:latest \
+  clawie-agent:latest \
   -c "cat /test/file.txt && touch /test/new.txt 2>&1 || echo 'Write blocked (expected)'"
 rm -rf /tmp/test-ro
 ```
@@ -162,7 +162,7 @@ Expected: Read succeeds, write fails with "Read-only file system".
 mkdir -p /tmp/test-rw
 container run --rm --entrypoint /bin/bash \
   -v /tmp/test-rw:/test \
-  nanoclaw-agent:latest \
+  clawie-agent:latest \
   -c "echo 'test write' > /test/new.txt && cat /test/new.txt"
 cat /tmp/test-rw/new.txt && rm -rf /tmp/test-rw
 ```
@@ -171,7 +171,7 @@ Expected: Both operations succeed.
 
 ### Full integration test
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 pnpm run build

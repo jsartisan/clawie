@@ -165,7 +165,7 @@ async function walkThroughBotCreation(): Promise<void> {
     [
       "You'll create a Discord bot in the Developer Portal. It's free and takes about a minute.",
       '',
-      '  1. Click "New Application", give it a name (e.g. "NanoClaw")',
+      '  1. Click "New Application", give it a name (e.g. "Clawie")',
       '  2. In the "Bot" tab, click "Reset Token" and copy the token',
       '  3. On the same tab, enable "Message Content Intent"',
       '     (under Privileged Gateway Intents)',
@@ -227,7 +227,7 @@ async function walkThroughServerCreation(): Promise<void> {
       '',
       '  1. In Discord, click the "+" at the bottom of the server list',
       '  2. Choose "Create My Own" → "For me and my friends"',
-      '  3. Give it any name (e.g. "NanoClaw")',
+      '  3. Give it any name (e.g. "Clawie")',
       formatNoteLink(url),
     ].filter((line): line is string => line !== null).join('\n'),
     'Create a Discord server',
@@ -509,7 +509,7 @@ async function openDmChannel(token: string, userId: string): Promise<string> {
 }
 
 async function resolveAgentName(): Promise<string> {
-  const preset = process.env.NANOCLAW_AGENT_NAME?.trim();
+  const preset = process.env.CLAWIE_AGENT_NAME?.trim();
   if (preset) {
     setupLog.userInput('agent_name', preset);
     return preset;

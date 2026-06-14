@@ -9,7 +9,7 @@ Adds WhatsApp support via the native Baileys adapter (no Chat SDK bridge).
 
 ## Install
 
-NanoClaw doesn't ship channels in trunk. This skill copies the native WhatsApp (Baileys) adapter and its `whatsapp-auth` setup step in from the `channels` branch. No Chat SDK bridge.
+Clawie doesn't ship channels in trunk. This skill copies the native WhatsApp (Baileys) adapter and its `whatsapp-auth` setup step in from the `channels` branch. No Chat SDK bridge.
 
 ### Pre-flight (idempotent)
 
@@ -251,7 +251,7 @@ pnpm exec tsx .claude/skills/add-whatsapp/scripts/wa-qr-browser.ts --clean
 
 Signal sessions corrupted from rapid restarts. Clear sessions.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -263,10 +263,10 @@ systemctl --user start $(systemd_unit)
 ### Bot not responding
 
 1. Auth exists: `test -f store/auth/creds.json`
-2. Connected: `grep "Connected to WhatsApp" logs/nanoclaw.log | tail -1`
+2. Connected: `grep "Connected to WhatsApp" logs/clawie.log | tail -1`
 3. Channel wired: `pnpm exec tsx scripts/q.ts data/v2.db "SELECT mg.platform_id, mg.name FROM messaging_groups mg JOIN messaging_group_agents mga ON mg.id=mga.messaging_group_id WHERE mg.channel_type='whatsapp'"`
 4. Service running: `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"`
 
 ### "conflict" disconnection
 
-Two instances connected with same credentials. Ensure only one NanoClaw process is running.
+Two instances connected with same credentials. Ensure only one Clawie process is running.

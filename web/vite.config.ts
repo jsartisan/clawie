@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
-// The portal SPA. In dev it serves on 4101 and proxies /api to the NanoClaw
+// The portal SPA. In dev it serves on 4101 and proxies /api to the Clawie
 // host's portal server (4100, see src/cli/http-server.ts) so the browser is
 // same-origin and no CORS is needed. In prod, `vite build` emits static
 // assets to web/dist, which the host serves directly.

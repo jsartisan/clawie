@@ -1,18 +1,18 @@
 # Add Parallel AI Integration
 
-Adds Parallel AI MCP integration to NanoClaw for advanced web research capabilities.
+Adds Parallel AI MCP integration to Clawie for advanced web research capabilities.
 
 ## What This Adds
 
 - **Quick Search** - Fast web lookups using Parallel Search API (free to use)
 - **Deep Research** - Comprehensive analysis using Parallel Task API (asks permission)
-- **Non-blocking Design** - Uses NanoClaw scheduler for result polling (no container blocking)
+- **Non-blocking Design** - Uses Clawie scheduler for result polling (no container blocking)
 
 ## Prerequisites
 
 User must have:
 1. Parallel AI API key from https://platform.parallel.ai
-2. NanoClaw already set up and running
+2. Clawie already set up and running
 3. Docker installed and running
 
 ## Implementation Steps
@@ -83,14 +83,14 @@ Update `container/agent-runner/src/index.ts`:
 Find the section where `mcpServers` is configured (around line 237-252):
 ```typescript
 const mcpServers: Record<string, any> = {
-  nanoclaw: ipcMcp
+  clawie: ipcMcp
 };
 ```
 
-Add Parallel AI MCP servers after the nanoclaw server:
+Add Parallel AI MCP servers after the clawie server:
 ```typescript
 const mcpServers: Record<string, any> = {
-  nanoclaw: ipcMcp
+  clawie: ipcMcp
 };
 
 // Add Parallel AI MCP servers if API key is available
@@ -122,7 +122,7 @@ allowedTools: [
   'Bash',
   'Read', 'Write', 'Edit', 'Glob', 'Grep',
   'WebSearch', 'WebFetch',
-  'mcp__nanoclaw__*',
+  'mcp__clawie__*',
   'mcp__parallel-search__*',
   'mcp__parallel-task__*'
 ],
@@ -178,14 +178,14 @@ AskUserQuestion: I can do deep research on [topic] using Parallel's Task API. Th
 
 1. Create the task using `mcp__parallel-task__create_task_run`
 2. Get the `run_id` from the response
-3. Create a polling scheduled task using `mcp__nanoclaw__schedule_task`:
+3. Create a polling scheduled task using `mcp__clawie__schedule_task`:
    ```
    Prompt: "Check Parallel AI task run [run_id] and send results when ready.
 
    1. Use the Parallel Task MCP to check the task status
    2. If status is 'completed', extract the results
-   3. Send results to user with mcp__nanoclaw__send_message
-   4. Use mcp__nanoclaw__complete_scheduled_task to mark this task as done
+   3. Send results to user with mcp__clawie__send_message
+   4. Use mcp__clawie__complete_scheduled_task to mark this task as done
 
    If status is still 'running' or 'pending', do nothing (task will run again in 30s).
    If status is 'failed', send error message and complete the task."
@@ -224,14 +224,14 @@ Build the container with updated agent runner:
 
 Verify the build:
 ```bash
-echo '{}' | docker run -i --entrypoint /bin/echo nanoclaw-agent:latest "Container OK"
+echo '{}' | docker run -i --entrypoint /bin/echo clawie-agent:latest "Container OK"
 ```
 
 ### 7. Restart Service
 
 Rebuild the main app and restart.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 pnpm run build
@@ -260,7 +260,7 @@ Tell the user to test:
 
 Check logs to verify MCP servers loaded:
 ```bash
-tail -20 logs/nanoclaw.log
+tail -20 logs/clawie.log
 ```
 
 Look for: `Parallel AI MCP servers configured`
@@ -279,7 +279,7 @@ Look for: `Parallel AI MCP servers configured`
 
 **Task polling not working:**
 - Verify scheduled task was created: `pnpm exec tsx scripts/q.ts store/messages.db "SELECT * FROM scheduled_tasks"`
-- Check task runs: `tail -f logs/nanoclaw.log | grep "scheduled task"`
+- Check task runs: `tail -f logs/clawie.log | grep "scheduled task"`
 - Ensure task prompt includes proper Parallel MCP tool names
 
 ## Uninstalling

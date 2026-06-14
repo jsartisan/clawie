@@ -69,7 +69,7 @@ chmod 600 ~/.gmail-mcp/gcp-oauth.keys.json ~/.gmail-mcp/credentials.json
 ### Verify mount allowlist covers the path
 
 ```bash
-cat ~/.config/nanoclaw/mount-allowlist.json
+cat ~/.config/clawie/mount-allowlist.json
 ```
 
 `~/.gmail-mcp` must sit under an `allowedRoots` entry (e.g. `/home/<user>`). If it doesn't, tell the user to run `/manage-mounts` first or add their home directory.
@@ -148,7 +148,7 @@ For each agent group that should have Gmail (ask the user — typically their pe
 ### List groups, pick which ones get Gmail
 
 ```bash
-ncl groups list
+clawie groups list
 ```
 
 ### Register the MCP server
@@ -156,7 +156,7 @@ ncl groups list
 For each chosen `<group-id>`:
 
 ```bash
-ncl groups config add-mcp-server \
+clawie groups config add-mcp-server \
   --id <group-id> \
   --name gmail \
   --command gmail-mcp \
@@ -164,11 +164,11 @@ ncl groups config add-mcp-server \
   --env '{"GMAIL_OAUTH_PATH":"/workspace/extra/.gmail-mcp/gcp-oauth.keys.json","GMAIL_CREDENTIALS_PATH":"/workspace/extra/.gmail-mcp/credentials.json"}'
 ```
 
-Approval behaviour depends on where you run it: from inside an agent's container `ncl` write verbs are approval-gated (admin approves before it lands); from a host operator shell with full scope, it executes immediately. Either way, the response tells you which path it took.
+Approval behaviour depends on where you run it: from inside an agent's container `clawie` write verbs are approval-gated (admin approves before it lands); from a host operator shell with full scope, it executes immediately. Either way, the response tells you which path it took.
 
 ### Add the `.gmail-mcp` mount
 
-There is no `ncl groups config add-mount` verb yet (tracked in [#2395](https://github.com/nanocoai/nanoclaw/issues/2395)). Until that ships, edit the DB directly via the in-tree wrapper (`scripts/q.ts` — `setup/verify.ts:5` codifies that NanoClaw avoids depending on the `sqlite3` CLI binary, so don't shell out to it):
+There is no `clawie groups config add-mount` verb yet (tracked in [#2395](https://github.com/nanocoai/clawie/issues/2395)). Until that ships, edit the DB directly via the in-tree wrapper (`scripts/q.ts` — `setup/verify.ts:5` codifies that Clawie avoids depending on the `sqlite3` CLI binary, so don't shell out to it):
 
 ```bash
 GROUP_ID='<group-id>'
@@ -180,9 +180,9 @@ pnpm exec tsx scripts/q.ts data/v2.db "UPDATE container_configs \
   WHERE agent_group_id = '$GROUP_ID';"
 ```
 
-Run from your NanoClaw project root (where `data/v2.db` lives). The `$[#]` placeholder is SQLite JSON1's append-to-end notation; it's `\$`-escaped so bash doesn't arithmetic-expand it before sqlite sees it. `updated_at` is ISO-string everywhere else in the schema, so use `datetime('now')` — not `strftime('%s','now')`, which would silently mix epoch ints into a column of YYYY-MM-DD HH:MM:SS strings.
+Run from your Clawie project root (where `data/v2.db` lives). The `$[#]` placeholder is SQLite JSON1's append-to-end notation; it's `\$`-escaped so bash doesn't arithmetic-expand it before sqlite sees it. `updated_at` is ISO-string everywhere else in the schema, so use `datetime('now')` — not `strftime('%s','now')`, which would silently mix epoch ints into a column of YYYY-MM-DD HH:MM:SS strings.
 
-**Switch to `ncl groups config add-mount` once #2395 lands.** Update this skill at that time.
+**Switch to `clawie groups config add-mount` once #2395 lands.** Update this skill at that time.
 
 **Why the container path is relative:** `mount-security` rejects absolute `containerPath` values. Additional mounts are prefixed with `/workspace/extra/`, so `containerPath: ".gmail-mcp"` lands at `/workspace/extra/.gmail-mcp`. The MCP server's `GMAIL_OAUTH_PATH` / `GMAIL_CREDENTIALS_PATH` env vars point at that absolute location inside the container.
 
@@ -194,7 +194,7 @@ Run from your NanoClaw project root (where `data/v2.db` lives). The `$[#]` place
 pnpm run build
 ```
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -215,22 +215,22 @@ Tell the user:
 ### Check logs if the tool isn't working
 
 ```bash
-tail -100 logs/nanoclaw.log logs/nanoclaw.error.log | grep -iE 'gmail|mcp'
+tail -100 logs/clawie.log logs/clawie.error.log | grep -iE 'gmail|mcp'
 # Per-container logs — session-scoped:
 ls data/v2-sessions/*/stderr.log | head
 ```
 
 Common signals:
 - `command not found: gmail-mcp` → image wasn't rebuilt or PATH doesn't include `/pnpm` (should — `ENV PATH="$PNPM_HOME:$PATH"` in Dockerfile).
-- `ENOENT: no such file or directory, open '/workspace/extra/.gmail-mcp/credentials.json'` → mount is missing. Check `~/.config/nanoclaw/mount-allowlist.json` includes a parent of `~/.gmail-mcp`.
+- `ENOENT: no such file or directory, open '/workspace/extra/.gmail-mcp/credentials.json'` → mount is missing. Check `~/.config/clawie/mount-allowlist.json` includes a parent of `~/.gmail-mcp`.
 - `401 Unauthorized` from `gmail.googleapis.com` → OneCLI isn't injecting. Check the agent's secret mode (`onecli agents secrets --id <agent-id>`) and that the Gmail app is connected (`onecli apps get --provider gmail`).
-- Agent says "I don't have Gmail tools" → the `gmail` MCP server isn't registered in this group's `mcpServers` (re-run the `ncl groups config add-mcp-server` step in Phase 3 for that group and restart it), or the agent-runner image is stale (rebuild with `./container/build.sh`, with `--no-cache` if suspicious).
+- Agent says "I don't have Gmail tools" → the `gmail` MCP server isn't registered in this group's `mcpServers` (re-run the `clawie groups config add-mcp-server` step in Phase 3 for that group and restart it), or the agent-runner image is stale (rebuild with `./container/build.sh`, with `--no-cache` if suspicious).
 
 ## Removal
 
 1. For each group that had Gmail wired, remove the MCP server from the DB:
    ```bash
-   ncl groups config remove-mcp-server --id <group-id> --name gmail
+   clawie groups config remove-mcp-server --id <group-id> --name gmail
    ```
 2. Remove the `.gmail-mcp` mount from the DB (no `remove-mount` verb yet — same #2395 dependency):
    ```bash
@@ -258,5 +258,5 @@ No `TOOL_ALLOWLIST` removal step — Phase 2 no longer edits it.
 - **MCP server:** [`@gongrzhe/server-gmail-autoauth-mcp`](https://github.com/GongRzhe/Gmail-MCP-Server) by GongRzhe — MIT-licensed.
 - **OneCLI credential stubs:** pattern documented at `https://onecli.sh/docs/guides/credential-stubs/gmail.md`.
 - **Skill pattern:** modeled on [`add-atomic-chat-tool`](../add-atomic-chat-tool/SKILL.md) and [`add-vercel`](../add-vercel/SKILL.md).
-- **Addresses:** [issue #1500](https://github.com/nanocoai/nanoclaw/issues/1500) (proxy Gmail/Calendar OAuth tokens through credential proxy) for the Gmail side.
-- **Related PRs:** [#1810](https://github.com/nanocoai/nanoclaw/pull/1810) (pre-install Gmail/Notion MCP) overlaps on the "install the MCP server in the image" idea but bundles many unrelated changes; this skill is the focused OneCLI-native version.
+- **Addresses:** [issue #1500](https://github.com/nanocoai/clawie/issues/1500) (proxy Gmail/Calendar OAuth tokens through credential proxy) for the Gmail side.
+- **Related PRs:** [#1810](https://github.com/nanocoai/clawie/pull/1810) (pre-install Gmail/Notion MCP) overlaps on the "install the MCP server in the image" idea but bundles many unrelated changes; this skill is the focused OneCLI-native version.

@@ -1,22 +1,22 @@
-## Admin CLI (`ncl`)
+## Admin CLI (`clawie`)
 
-The `ncl` command is available at `/usr/local/bin/ncl`. It lets you query and modify NanoClaw's central configuration.
+The `clawie` command is available at `/usr/local/bin/clawie`. It lets you query and modify Clawie's central configuration.
 
 ### Usage
 
 ```
-ncl <resource> <verb> [--flags]
-ncl <resource> help
-ncl help
+clawie <resource> <verb> [--flags]
+clawie <resource> help
+clawie help
 ```
 
 ### Scope
 
-Your CLI access may be scoped. Run `ncl help` to see which resources are available and whether args are auto-filled. Under `group` scope (the default), `--id` and group-related args are auto-filled to your agent group — you don't need to pass them.
+Your CLI access may be scoped. Run `clawie help` to see which resources are available and whether args are auto-filled. Under `group` scope (the default), `--id` and group-related args are auto-filled to your agent group — you don't need to pass them.
 
 ### Resources
 
-Run `ncl help` for the full list. Common resources:
+Run `clawie help` for the full list. Common resources:
 
 | Resource | Verbs | What it is |
 |----------|-------|------------|
@@ -29,11 +29,11 @@ Additional resources (available under `global` scope only): messaging-groups, wi
 
 ### When to use
 
-- **Looking up your own config** — `ncl groups get` or `ncl groups config get` to see your container config.
-- **Restarting your container** — `ncl groups restart` (with optional `--rebuild` and `--message`).
-- **Checking who's in your group** — `ncl members list`.
-- **Seeing your destinations** — `ncl destinations list`.
-- **Answering questions about the system** — query `ncl` rather than guessing.
+- **Looking up your own config** — `clawie groups get` or `clawie groups config get` to see your container config.
+- **Restarting your container** — `clawie groups restart` (with optional `--rebuild` and `--message`).
+- **Checking who's in your group** — `clawie members list`.
+- **Seeing your destinations** — `clawie destinations list`.
+- **Answering questions about the system** — query `clawie` rather than guessing.
 
 ### Access rules
 
@@ -43,7 +43,7 @@ Read commands (list, get) are open. Write commands (create, update, delete, rest
 
 Write commands require admin approval. Here's what happens:
 
-1. You run the command (e.g. `ncl groups config update --model claude-sonnet-4-5-20250514`).
+1. You run the command (e.g. `clawie groups config update --model claude-sonnet-4-5-20250514`).
 2. The command returns immediately with an `approval-pending` response — it has **not** been executed yet.
 3. An admin or owner gets a notification showing exactly what you requested, with approve/reject options.
 4. Once the admin responds:
@@ -56,28 +56,28 @@ You don't need to poll or retry — the result arrives automatically.
 
 ```bash
 # Read commands (no approval needed)
-ncl groups get
-ncl groups config get
-ncl sessions list
-ncl destinations list
-ncl members list
+clawie groups get
+clawie groups config get
+clawie sessions list
+clawie destinations list
+clawie members list
 
 # Write commands (approval required)
-ncl groups restart
-ncl groups restart --rebuild --message "Config updated."
-ncl groups config update --model claude-sonnet-4-5-20250514
-ncl groups config add-mcp-server --name rss --command npx --args '["some-rss-mcp"]'
-ncl groups config add-package --npm some-package
-ncl members add --user telegram:jane
+clawie groups restart
+clawie groups restart --rebuild --message "Config updated."
+clawie groups config update --model claude-sonnet-4-5-20250514
+clawie groups config add-mcp-server --name rss --command npx --args '["some-rss-mcp"]'
+clawie groups config add-package --npm some-package
+clawie members add --user telegram:jane
 ```
 
 ### Important
 
-Config changes via `ncl groups config update` do not take effect until `ncl groups restart`. Run `ncl groups config help` for details.
+Config changes via `clawie groups config update` do not take effect until `clawie groups restart`. Run `clawie groups config help` for details.
 
 ### Tips
 
-- Use `ncl <resource> help` to see all available fields, types, enums, and which fields are auto-filled.
+- Use `clawie <resource> help` to see all available fields, types, enums, and which fields are auto-filled.
 - Flags use `--hyphen-case` (e.g. `--agent-group-id`), mapped to `underscore_case` DB columns automatically.
 - `list` supports filtering by any non-auto column. Default limit is 200 rows; override with `--limit N`.
 - Write commands return `approval-pending` immediately — don't treat this as an error. Wait for the system message with the result.

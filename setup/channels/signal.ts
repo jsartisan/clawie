@@ -53,7 +53,7 @@ const DEFAULT_AGENT_NAME = 'Nano';
 export async function runSignalChannel(displayName: string): Promise<ChannelFlowResult> {
   note(
     [
-      "NanoClaw links to Signal as a *secondary* device on your existing",
+      "Clawie links to Signal as a *secondary* device on your existing",
       "phone — no new number needed. Your assistant will send and receive",
       "messages as the number on that phone.",
       '',
@@ -172,7 +172,7 @@ async function ensureSignalCli(): Promise<void> {
 
   note(
     [
-      "NanoClaw talks to Signal through signal-cli, which isn't installed yet.",
+      "Clawie talks to Signal through signal-cli, which isn't installed yet.",
       "We'll install it for you now — about 30 seconds, one-time only.",
       '',
       process.platform === 'darwin'
@@ -362,7 +362,7 @@ function writeSignalAccount(account: string): void {
 
 async function restartService(): Promise<void> {
   const s = p.spinner();
-  s.start('Restarting NanoClaw so it sees your Signal account…');
+  s.start('Restarting Clawie so it sees your Signal account…');
   const start = Date.now();
   const platform = process.platform;
   try {
@@ -384,7 +384,7 @@ async function restartService(): Promise<void> {
     // Give the adapter a moment to connect to signal-cli before
     // init-first-agent's welcome DM hits the delivery path.
     await new Promise((r) => setTimeout(r, 5000));
-    s.stop(`NanoClaw restarted. ${k.dim(`(${fmtDuration(Date.now() - start)})`)}`);
+    s.stop(`Clawie restarted. ${k.dim(`(${fmtDuration(Date.now() - start)})`)}`);
     setupLog.step('signal-restart', 'success', Date.now() - start, {
       PLATFORM: platform,
     });
@@ -399,7 +399,7 @@ async function restartService(): Promise<void> {
 }
 
 async function resolveAgentName(): Promise<string> {
-  const preset = process.env.NANOCLAW_AGENT_NAME?.trim();
+  const preset = process.env.CLAWIE_AGENT_NAME?.trim();
   if (preset) {
     setupLog.userInput('agent_name', preset);
     return preset;

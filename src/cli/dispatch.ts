@@ -19,7 +19,7 @@ export async function dispatch(req: RequestFrame, ctx: CallerContext): Promise<R
 
   // Fallback: if the full command isn't registered, trim the last
   // dash-segment and treat it as the target ID. This lets clients join
-  // all positional args with dashes (e.g. `ncl groups get abc123`
+  // all positional args with dashes (e.g. `clawie groups get abc123`
   // → command "groups-get-abc123" → trim → "groups-get" + id "abc123").
   if (!cmd) {
     const idx = req.command.lastIndexOf('-');
@@ -123,7 +123,7 @@ export async function dispatch(req: RequestFrame, ctx: CallerContext): Promise<R
       action: 'cli_command',
       payload: { frame: { id: req.id, command: req.command, args: req.args } },
       title: `CLI: ${req.command}`,
-      question: `Agent "${agentName}" wants to run:\n\`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}\``,
+      question: `Agent "${agentName}" wants to run:\n\`clawie ${req.command}${argSummary ? ' ' + argSummary : ''}\``,
     });
 
     return err(req.id, 'approval-pending', 'Approval request sent to admin. You will be notified of the result.');
@@ -188,9 +188,9 @@ registerApprovalHandler('cli_command', async ({ payload, notify }) => {
 
   if (response.ok) {
     const data = typeof response.data === 'string' ? response.data : JSON.stringify(response.data, null, 2);
-    notify(`Your \`ncl ${frame.command}\` request was approved and executed.\n\n${data}`);
+    notify(`Your \`clawie ${frame.command}\` request was approved and executed.\n\n${data}`);
   } else {
-    notify(`Your \`ncl ${frame.command}\` request was approved but failed: ${response.error.message}`);
+    notify(`Your \`clawie ${frame.command}\` request was approved but failed: ${response.error.message}`);
   }
 });
 

@@ -1,13 +1,13 @@
 ---
 name: x-integration
-description: X (Twitter) integration for NanoClaw. Post tweets, like, reply, retweet, and quote. Use for setup, testing, or troubleshooting X functionality. Triggers on "setup x", "x integration", "twitter", "post tweet", "tweet".
+description: X (Twitter) integration for Clawie. Post tweets, like, reply, retweet, and quote. Use for setup, testing, or troubleshooting X functionality. Triggers on "setup x", "x integration", "twitter", "post tweet", "tweet".
 ---
 
 # X (Twitter) Integration
 
 Browser automation for X interactions via WhatsApp.
 
-> **Compatibility:** NanoClaw v1.0.0. Directory structure may change in future versions.
+> **Compatibility:** Clawie v1.0.0. Directory structure may change in future versions.
 
 ## Features
 
@@ -23,7 +23,7 @@ Browser automation for X interactions via WhatsApp.
 
 Before using this skill, ensure:
 
-1. **NanoClaw is installed and running** - WhatsApp connected, service active
+1. **Clawie is installed and running** - WhatsApp connected, service active
 2. **Dependencies installed**:
    ```bash
    pnpm ls playwright dotenv-cli || pnpm install playwright dotenv-cli
@@ -38,7 +38,7 @@ Before using this skill, ensure:
 
 ## Quick Start
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 # 1. Setup authentication (interactive)
@@ -64,7 +64,7 @@ launchctl kickstart -k gui/$(id -u)/$(launchd_label)  # macOS
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CHROME_PATH` | `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` | Chrome executable path |
-| `NANOCLAW_ROOT` | `process.cwd()` | Project root directory |
+| `CLAWIE_ROOT` | `process.cwd()` | Project root directory |
 | `LOG_LEVEL` | `info` | Logging level (debug, info, warn, error) |
 
 Set in `.env` file (loaded via `dotenv-cli` at runtime):
@@ -108,7 +108,7 @@ Paths relative to project root:
 |------|---------|-----|
 | `data/x-browser-profile/` | Chrome profile with X session | Ignored |
 | `data/x-auth.json` | Auth state marker | Ignored |
-| `logs/nanoclaw.log` | Service logs (contains X operation logs) | Ignored |
+| `logs/clawie.log` | Service logs (contains X operation logs) | Ignored |
 
 ## Architecture
 
@@ -157,7 +157,7 @@ Paths relative to project root:
 
 ### Integration Points
 
-To integrate this skill into NanoClaw, make the following modifications:
+To integrate this skill into Clawie, make the following modifications:
 
 ---
 
@@ -236,7 +236,7 @@ COPY .claude/skills/x-integration/agent.ts ./src/skills/x-integration/
 
 ## Setup
 
-All paths below are relative to project root (`NANOCLAW_ROOT`).
+All paths below are relative to project root (`CLAWIE_ROOT`).
 
 ### 1. Check Chrome Path
 
@@ -273,7 +273,7 @@ cat data/x-auth.json  # Should show {"authenticated": true, ...}
 
 ### 4. Restart Service
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 pnpm run build
@@ -284,7 +284,7 @@ launchctl kickstart -k gui/$(id -u)/$(launchd_label)  # macOS
 
 **Verify success.**
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -353,7 +353,7 @@ echo '{"content":"Test"}' | pnpm exec tsx .claude/skills/x-integration/scripts/p
 
 ### Authentication Expired
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 pnpm exec dotenv -e .env -- pnpm exec tsx .claude/skills/x-integration/scripts/setup.ts
@@ -376,10 +376,10 @@ rm -f data/x-browser-profile/SingletonCookie
 
 ```bash
 # Host logs (relative to project root)
-grep -i "x_post\|x_like\|x_reply\|handleXIpc" logs/nanoclaw.log | tail -20
+grep -i "x_post\|x_like\|x_reply\|handleXIpc" logs/clawie.log | tail -20
 
 # Script errors
-grep -i "error\|failed" logs/nanoclaw.log | tail -20
+grep -i "error\|failed" logs/clawie.log | tail -20
 ```
 
 ### Script Timeout
@@ -419,7 +419,7 @@ If MCP tools not found in container:
 ./container/build.sh 2>&1 | grep -i skill
 
 # Check container has the file
-docker run nanoclaw-agent ls -la /app/src/skills/
+docker run clawie-agent ls -la /app/src/skills/
 ```
 
 ## Security

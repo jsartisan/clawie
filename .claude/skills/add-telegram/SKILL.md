@@ -9,7 +9,7 @@ Adds Telegram bot support via the Chat SDK bridge.
 
 ## Install
 
-NanoClaw doesn't ship channels in trunk. This skill copies the Telegram adapter, its formatting/pairing helpers, their tests, and the `pair-telegram` setup step in from the `channels` branch.
+Clawie doesn't ship channels in trunk. This skill copies the Telegram adapter, its formatting/pairing helpers, their tests, and the `pair-telegram` setup step in from the `channels` branch.
 
 ### Pre-flight (idempotent)
 
@@ -73,8 +73,8 @@ pnpm run build
 
 1. Open Telegram and search for `@BotFather`
 2. Send `/newbot` and follow the prompts:
-   - Bot name: Something friendly (e.g., "NanoClaw Assistant")
-   - Bot username: Must end with "bot" (e.g., "nanoclaw_bot")
+   - Bot name: Something friendly (e.g., "Clawie Assistant")
+   - Bot username: Must end with "bot" (e.g., "clawie_bot")
 3. Copy the bot token (looks like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
 
 **Important for group chats**: By default, Telegram bots only see @mentions and commands in groups. To let the bot see all messages:
@@ -101,31 +101,31 @@ The single `TELEGRAM_BOT_TOKEN` above runs one bot. To run several bots — each
 Channel-account tokens are encrypted at rest with AES-256-GCM. Generate a 32-byte key and add it to `.env`:
 
 ```bash
-grep -q '^NANOCLAW_SECRET_KEY=' .env || echo "NANOCLAW_SECRET_KEY=$(openssl rand -base64 32)" >> .env
+grep -q '^CLAWIE_SECRET_KEY=' .env || echo "CLAWIE_SECRET_KEY=$(openssl rand -base64 32)" >> .env
 ```
 
 Keep `.env` private (chmod 600). Losing this key makes stored tokens unrecoverable; rotating it requires re-entering every token.
 
 ### 2. Create an account per bot and bind it to an agent
 
-`account_id` is any short nickname you choose for the bot (e.g. `work`, `side`). `default_agent_group_id` is the agent every chat that bot sees will route to (find it with `ncl groups list`).
+`account_id` is any short nickname you choose for the bot (e.g. `work`, `side`). `default_agent_group_id` is the agent every chat that bot sees will route to (find it with `clawie groups list`).
 
 ```bash
 # Create the mapping (one per BotFather bot)
-ncl channel-accounts create --channel-type telegram --account-id side --default-agent-group-id <agent-group-id>
+clawie channel-accounts create --channel-type telegram --account-id side --default-agent-group-id <agent-group-id>
 
 # Store its bot token (encrypted) — use the channel_accounts.id printed above
-ncl channel-accounts set-secret --id <channel-account-id> --name bot_token --value <telegram-bot-token>
+clawie channel-accounts set-secret --id <channel-account-id> --name bot_token --value <telegram-bot-token>
 ```
 
-Repeat for each bot with its own `account_id` and agent group. Inspect with `ncl channel-accounts list` (tokens are never shown).
+Repeat for each bot with its own `account_id` and agent group. Inspect with `clawie channel-accounts list` (tokens are never shown).
 
 ### 3. Pick a default account (important)
 
 A Telegram private chat's ID equals your user ID, so it is the **same** for every bot you DM. Identity therefore includes the bot account. Mark one account as the default — the default bot transparently owns any account-less chat (existing DMs/groups created before you added accounts), so nothing needs re-wiring:
 
 ```bash
-ncl channel-accounts set-default --id <channel-account-id>
+clawie channel-accounts set-default --id <channel-account-id>
 ```
 
 Typically the default is the account that wraps your original (pre-accounts) bot. Other bots only ever see their own chats, so DMing a second bot creates a fresh chat that auto-wires to that bot's default agent.

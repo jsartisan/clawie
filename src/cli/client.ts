@@ -1,19 +1,19 @@
 /**
- * `ncl` binary entry point.
+ * `clawie` binary entry point.
  *
  * Parses argv, builds a request frame, sends it via the picked transport,
  * formats the response, exits non-zero on error.
  *
  * Usage:
- *   ncl <resource> <verb> [target] [--key value ...] [--json]
+ *   clawie <resource> <verb> [target] [--key value ...] [--json]
  *
  * Examples:
- *   ncl groups list
- *   ncl groups get abc123
- *   ncl groups create --name foo --folder bar
- *   ncl groups update abc123 --name baz
- *   ncl help
- *   ncl groups help
+ *   clawie groups list
+ *   clawie groups get abc123
+ *   clawie groups create --name foo --folder bar
+ *   clawie groups update abc123 --name baz
+ *   clawie help
+ *   clawie groups help
  */
 import { randomUUID } from 'crypto';
 
@@ -81,7 +81,7 @@ function parseArgv(argv: string[]): {
   }
 
   if (positional.length === 0) {
-    process.stderr.write('ncl: missing command\n');
+    process.stderr.write('clawie: missing command\n');
     printUsage();
     process.exit(2);
   }
@@ -98,15 +98,15 @@ function parseArgv(argv: string[]): {
 function printUsage(): void {
   process.stdout.write(
     [
-      'Usage: ncl <resource> <verb> [target] [--key value ...] [--json]',
+      'Usage: clawie <resource> <verb> [target] [--key value ...] [--json]',
       '',
-      'Run `ncl help` to list available resources and commands.',
+      'Run `clawie help` to list available resources and commands.',
       '',
     ].join('\n'),
   );
 }
 
 main().catch((err) => {
-  process.stderr.write(`ncl: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.stderr.write(`clawie: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(2);
 });

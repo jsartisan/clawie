@@ -3,13 +3,13 @@
  * DB (currently per-bot channel tokens in `channel_account_secrets`).
  *
  * Model: AES-256-GCM with a single 32-byte master key in `.env`
- * (`NANOCLAW_SECRET_KEY`, base64). Each ciphertext is self-describing —
+ * (`CLAWIE_SECRET_KEY`, base64). Each ciphertext is self-describing —
  * `base64(iv[12] | authTag[16] | ciphertext)` — so a random IV per record and
  * the GCM auth tag travel with the value. No external KMS, no per-record key
  * management.
  *
  * Threat model: this protects DB-only exposure (a copied/branched `data/v2.db`,
- * DB Browser, backups, `ncl ... list`, `q.ts`) — all of which see ciphertext.
+ * DB Browser, backups, `clawie ... list`, `q.ts`) — all of which see ciphertext.
  * It does NOT protect a host that holds both `.env` and the DB, since the
  * master key lives in `.env`. Keep `.env` at chmod 600 (it is gitignored).
  *
@@ -30,13 +30,13 @@ const TAG_BYTES = 16;
  * silently writing/reading garbage.
  */
 function masterKey(): Buffer {
-  const raw = readEnvFile(['NANOCLAW_SECRET_KEY']).NANOCLAW_SECRET_KEY;
+  const raw = readEnvFile(['CLAWIE_SECRET_KEY']).CLAWIE_SECRET_KEY;
   if (!raw) {
-    throw new Error('NANOCLAW_SECRET_KEY is not set in .env — generate one with `openssl rand -base64 32`');
+    throw new Error('CLAWIE_SECRET_KEY is not set in .env — generate one with `openssl rand -base64 32`');
   }
   const key = Buffer.from(raw, 'base64');
   if (key.length !== 32) {
-    throw new Error('NANOCLAW_SECRET_KEY must decode to 32 bytes (generate with `openssl rand -base64 32`)');
+    throw new Error('CLAWIE_SECRET_KEY must decode to 32 bytes (generate with `openssl rand -base64 32`)');
   }
   return key;
 }

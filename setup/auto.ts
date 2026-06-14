@@ -7,12 +7,12 @@
  * `setup/lib/theme.ts`; Telegram's full flow in `setup/channels/telegram.ts`.
  *
  * Config via env:
- *   NANOCLAW_DISPLAY_NAME  how the agents address the operator — skips the
+ *   CLAWIE_DISPLAY_NAME  how the agents address the operator — skips the
  *                          prompt. Defaults to $USER.
- *   NANOCLAW_AGENT_NAME    messaging-channel agent name (consumed by the
+ *   CLAWIE_AGENT_NAME    messaging-channel agent name (consumed by the
  *                          channel flow). The CLI scratch agent is always
  *                          "Terminal Agent".
- *   NANOCLAW_SKIP          comma-separated step names to skip
+ *   CLAWIE_SKIP          comma-separated step names to skip
  *                          (environment|container|onecli|auth|mounts|
  *                           service|cli-agent|timezone|channel|
  *                           verify|first-chat)
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
 
   // Parse CLI flags first — `--help` short-circuits before we render anything,
   // and flag values get folded into process.env so existing step code reading
-  // NANOCLAW_* sees them unchanged.
+  // CLAWIE_* sees them unchanged.
   const flagResult = parseFlags(process.argv.slice(2));
   if (flagResult.help) {
     printHelp();
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   // work begins. Default lands on standard so Enter is the happy path.
   // On sg re-exec, the user already chose — skip straight to standard.
   let startChoice: 'default' | 'advanced' = 'default';
-  if (process.env.NANOCLAW_REEXEC_SG !== '1') {
+  if (process.env.CLAWIE_REEXEC_SG !== '1') {
     startChoice = ensureAnswer(
       await brightSelect<'default' | 'advanced'>({
         message: 'How would you like to begin?',
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
   }
 
   const skip = new Set(
-    (process.env.NANOCLAW_SKIP ?? '')
+    (process.env.CLAWIE_SKIP ?? '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
@@ -185,7 +185,7 @@ async function main(): Promise<void> {
       ),
     );
 
-    const remoteHost = process.env.NANOCLAW_ONECLI_API_HOST?.trim();
+    const remoteHost = process.env.CLAWIE_ONECLI_API_HOST?.trim();
 
     if (remoteHost) {
       // Advanced-settings override: user has already named a remote vault,
@@ -239,7 +239,7 @@ async function main(): Promise<void> {
               },
               {
                 value: 'fresh',
-                label: 'Install a fresh instance for NanoClaw',
+                label: 'Install a fresh instance for Clawie',
                 hint: 'reinstalls onecli; other apps may need to reconnect',
               },
             ],
@@ -298,14 +298,14 @@ async function main(): Promise<void> {
 
   if (!skip.has('service')) {
     const res = await runQuietStep('service', {
-      running: 'Starting NanoClaw in the background…',
-      done: 'NanoClaw is running.',
+      running: 'Starting Clawie in the background…',
+      done: 'Clawie is running.',
     });
     if (!res.ok) {
-      await fail('service', "Couldn't start NanoClaw.", 'See logs/nanoclaw.error.log for details.');
+      await fail('service', "Couldn't start Clawie.", 'See logs/clawie.error.log for details.');
     }
     if (res.terminal?.fields.DOCKER_GROUP_STALE === 'true') {
-      p.log.warn(brandBody("NanoClaw's permissions need a tweak before it can reach Docker."));
+      p.log.warn(brandBody("Clawie's permissions need a tweak before it can reach Docker."));
       p.log.message(
         brandBody(
           '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' + `  systemctl --user restart ${getSystemdUnit()}`,
@@ -317,7 +317,7 @@ async function main(): Promise<void> {
   let displayName: string | undefined;
   async function resolveDisplayName(): Promise<string> {
     if (displayName) return displayName;
-    const preset = process.env.NANOCLAW_DISPLAY_NAME?.trim();
+    const preset = process.env.CLAWIE_DISPLAY_NAME?.trim();
     const existing = detectExistingDisplayName(process.cwd());
     const fallback = process.env.USER?.trim() || 'Operator';
     displayName = preset || existing || (await askDisplayName(fallback));
@@ -420,7 +420,7 @@ async function main(): Promise<void> {
           stepName: 'cli-agent',
           msg:
             ping === 'socket_error'
-              ? "NanoClaw service isn't listening on its CLI socket."
+              ? "Clawie service isn't listening on its CLI socket."
               : 'No reply from the assistant within 30 seconds.',
           hint:
             ping === 'socket_error'
@@ -497,7 +497,7 @@ async function main(): Promise<void> {
         notes.push(
           wrapForGutter(
             [
-              '• Your NanoClaw service is running from a different folder on this machine.',
+              '• Your Clawie service is running from a different folder on this machine.',
               '  Point it at this checkout with:',
               `    launchctl bootout gui/$(id -u)/${label}`,
               `    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/${label}.plist`,
@@ -538,7 +538,7 @@ async function main(): Promise<void> {
 
   const rows: [string, string][] = [
     ['Chat in the terminal:', 'pnpm run chat hi'],
-    ["See what's happening:", 'tail -f logs/nanoclaw.log'],
+    ["See what's happening:", 'tail -f logs/clawie.log'],
     ['Open Claude Code:', 'claude'],
   ];
   const labelWidth = Math.max(...rows.map(([l]) => l.length));
@@ -549,7 +549,7 @@ async function main(): Promise<void> {
   // caveat doesn't land after the user's already looked away at their phone.
   note(
     wrapForGutter(
-      "NanoClaw runs on this machine. It's only reachable while this computer is on and connected to the internet. For always-on availability, run it on a cloud VM — or keep this machine awake.",
+      "Clawie runs on this machine. It's only reachable while this computer is on and connected to the internet. For always-on availability, run it on a cloud VM — or keep this machine awake.",
       6,
     ),
     'Heads up',
@@ -619,7 +619,7 @@ async function confirmAssistantResponds(): Promise<PingResult> {
     s.stop(`${k.bold(fitToWidth('Your assistant is ready.', suffix))}${k.dim(suffix)}`);
   } else {
     const msg =
-      result === 'socket_error' ? "Couldn't reach the NanoClaw service." : "Your assistant didn't reply in time.";
+      result === 'socket_error' ? "Couldn't reach the Clawie service." : "Your assistant didn't reply in time.";
     s.stop(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`, 1);
   }
   return result;
@@ -630,7 +630,7 @@ function renderPingFailureNote(result: PingResult): void {
     result === 'socket_error'
       ? [
           wrapForGutter(
-            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`:",
+            "The Clawie service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`:",
             6,
           ),
           '',
@@ -638,7 +638,7 @@ function renderPingFailureNote(result: PingResult): void {
           `  Linux:  systemctl --user restart ${getSystemdUnit()}`,
         ].join('\n')
       : wrapForGutter(
-          'No reply from your assistant within 30 seconds. Check `logs/nanoclaw.log` for clues, then try `pnpm run chat hi`.',
+          'No reply from your assistant within 30 seconds. Check `logs/clawie.log` for clues, then try `pnpm run chat hi`.',
           6,
         );
   note(body, 'Skipping the first chat');
@@ -687,7 +687,7 @@ async function runFirstChat(): Promise<void> {
 
 function sendChatMessage(message: string): Promise<void> {
   return new Promise((resolve) => {
-    // `pnpm --silent` suppresses the `> nanoclaw@… chat` preamble so the
+    // `pnpm --silent` suppresses the `> clawie@… chat` preamble so the
     // agent's reply reads as a clean block under the prompt. Splitting on
     // whitespace mirrors `pnpm run chat hello world` — chat.ts joins argv
     // with spaces on the far side.
@@ -711,8 +711,8 @@ async function runAuthStep(): Promise<void> {
   // Custom Anthropic-compatible endpoint flow. Both URL and token must be set;
   // OneCLI stores the token as a generic Bearer secret keyed to the URL host,
   // so the container only ever sees ANTHROPIC_BASE_URL + a placeholder.
-  const customBaseUrl = process.env.NANOCLAW_ANTHROPIC_BASE_URL?.trim();
-  const customAuthToken = process.env.NANOCLAW_ANTHROPIC_AUTH_TOKEN?.trim();
+  const customBaseUrl = process.env.CLAWIE_ANTHROPIC_BASE_URL?.trim();
+  const customAuthToken = process.env.CLAWIE_ANTHROPIC_AUTH_TOKEN?.trim();
   if (customBaseUrl && customAuthToken) {
     await runCustomEndpointAuth(customBaseUrl, customAuthToken);
     return;
@@ -763,7 +763,7 @@ async function runAuthStep(): Promise<void> {
     setupLog.step('auth', 'skipped', 0, { REASON: 'user-skipped' });
     p.log.warn(
       brandBody(
-        'Claude sign-in skipped. Re-run setup or run `bash nanoclaw.sh` to finish later.',
+        'Claude sign-in skipped. Re-run setup or run `bash clawie.sh` to finish later.',
       ),
     );
     return;
@@ -1236,7 +1236,7 @@ function runInheritScript(cmd: string, args: string[]): Promise<number> {
  * so the rest of the run inherits the docker group without a re-login.
  */
 function maybeReexecUnderSg(): void {
-  if (process.env.NANOCLAW_REEXEC_SG === '1') return;
+  if (process.env.CLAWIE_REEXEC_SG === '1') return;
   if (process.platform !== 'linux') return;
   const info = spawnSync('docker', ['info'], { encoding: 'utf-8' });
   if (info.status === 0) return;
@@ -1245,11 +1245,11 @@ function maybeReexecUnderSg(): void {
   if (spawnSync('which', ['sg'], { stdio: 'ignore' }).status !== 0) return;
 
   p.log.warn(brandBody('Docker socket not accessible in current group. Re-executing under `sg docker`.'));
-  const existingSkip = (process.env.NANOCLAW_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const existingSkip = (process.env.CLAWIE_SKIP ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   const skipList = [...new Set([...existingSkip, ...setupLog.completedStepNames()])].join(',');
   const res = spawnSync('sg', ['docker', '-c', 'pnpm run setup:auto'], {
     stdio: 'inherit',
-    env: { ...process.env, NANOCLAW_REEXEC_SG: '1', ...(skipList ? { NANOCLAW_SKIP: skipList } : {}) },
+    env: { ...process.env, CLAWIE_REEXEC_SG: '1', ...(skipList ? { CLAWIE_SKIP: skipList } : {}) },
   });
   process.exit(res.status ?? 1);
 }
@@ -1257,7 +1257,7 @@ function maybeReexecUnderSg(): void {
 // ─── intro + progression-log init ──────────────────────────────────────
 
 function printIntro(): void {
-  const isReexec = process.env.NANOCLAW_REEXEC_SG === '1';
+  const isReexec = process.env.CLAWIE_REEXEC_SG === '1';
   const wordmark = `${k.bold('Nano')}${brandBold('Claw')}`;
 
   if (isReexec) {
@@ -1273,13 +1273,13 @@ function printIntro(): void {
 }
 
 /**
- * Bootstrap (nanoclaw.sh) normally initializes logs/setup.log and writes
+ * Bootstrap (clawie.sh) normally initializes logs/setup.log and writes
  * the bootstrap entry before we even boot. If someone runs `pnpm run
  * setup:auto` directly, start a fresh progression log here so we don't
  * append to a stale one from a previous run.
  */
 function initProgressionLog(): void {
-  if (process.env.NANOCLAW_BOOTSTRAPPED === '1') return;
+  if (process.env.CLAWIE_BOOTSTRAPPED === '1') return;
   let commit = '';
   try {
     commit = spawnSync('git', ['rev-parse', '--short', 'HEAD'], {

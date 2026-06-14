@@ -7,7 +7,7 @@ description: Add Slack channel integration via native Socket Mode (no public web
 
 Adds Slack support via a **native Socket Mode** adapter built directly on
 `@slack/socket-mode` + `@slack/web-api`. Socket Mode opens an outbound
-WebSocket to Slack, so NanoClaw never needs a public webhook URL, an ngrok
+WebSocket to Slack, so Clawie never needs a public webhook URL, an ngrok
 tunnel, or the shared `webhook-server.ts`. Messages, button clicks, and file
 uploads all arrive over that single connection.
 
@@ -67,7 +67,7 @@ Socket Mode needs **two** tokens:
 ### Create Slack App
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) and click **Create New App** > **From scratch**
-2. Name it (e.g., "NanoClaw") and select your workspace
+2. Name it (e.g., "Clawie") and select your workspace
 
 ### Enable Socket Mode + app-level token
 
@@ -127,32 +127,32 @@ The single `SLACK_BOT_TOKEN`/`SLACK_APP_TOKEN` pair above runs one Slack app. To
 Channel-account tokens are encrypted at rest with AES-256-GCM. Generate a 32-byte key and add it to `.env`:
 
 ```bash
-grep -q '^NANOCLAW_SECRET_KEY=' .env || echo "NANOCLAW_SECRET_KEY=$(openssl rand -base64 32)" >> .env
+grep -q '^CLAWIE_SECRET_KEY=' .env || echo "CLAWIE_SECRET_KEY=$(openssl rand -base64 32)" >> .env
 ```
 
 Keep `.env` private (chmod 600). Losing this key makes stored tokens unrecoverable.
 
 ### 2. Create an account per app and bind it to an agent
 
-`account_id` is any short nickname you choose for the app (e.g. `work`, `side`). `default_agent_group_id` is the agent every channel that app sees will route to (find it with `ncl groups list`).
+`account_id` is any short nickname you choose for the app (e.g. `work`, `side`). `default_agent_group_id` is the agent every channel that app sees will route to (find it with `clawie groups list`).
 
 ```bash
 # Create the mapping (one per Slack app — each needs its own bot + app token)
-ncl channel-accounts create --channel-type slack --account-id work --default-agent-group-id <agent-group-id>
+clawie channel-accounts create --channel-type slack --account-id work --default-agent-group-id <agent-group-id>
 
 # Store its tokens (encrypted) — use the channel_accounts.id printed above
-ncl channel-accounts set-secret --id <channel-account-id> --name bot_token --value xoxb-...
-ncl channel-accounts set-secret --id <channel-account-id> --name app_token --value xapp-...
+clawie channel-accounts set-secret --id <channel-account-id> --name bot_token --value xoxb-...
+clawie channel-accounts set-secret --id <channel-account-id> --name app_token --value xapp-...
 ```
 
-Repeat for each app with its own `account_id` and agent group. Inspect with `ncl channel-accounts list` (tokens are never shown).
+Repeat for each app with its own `account_id` and agent group. Inspect with `clawie channel-accounts list` (tokens are never shown).
 
 ### 3. Pick a default account
 
 Chat identity includes the app account. Mark one account as the default — the default app transparently owns any account-less channel (chats created before you added accounts), so nothing needs re-wiring:
 
 ```bash
-ncl channel-accounts set-default --id <channel-account-id>
+clawie channel-accounts set-default --id <channel-account-id>
 ```
 
 Typically the default is the account that wraps your original (pre-accounts) app.

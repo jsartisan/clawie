@@ -71,7 +71,7 @@ chmod 600 ~/.calendar-mcp/*.json
 ### Verify mount allowlist covers the path
 
 ```bash
-cat ~/.config/nanoclaw/mount-allowlist.json
+cat ~/.config/clawie/mount-allowlist.json
 ```
 
 `~/.calendar-mcp` must sit under an `allowedRoots` entry.
@@ -134,10 +134,10 @@ For each agent group, persist two changes to the **central DB** (`data/v2.db`): 
 
 ### Register the MCP server
 
-For each chosen `<group-id>` (use `ncl groups list` to enumerate):
+For each chosen `<group-id>` (use `clawie groups list` to enumerate):
 
 ```bash
-ncl groups config add-mcp-server \
+clawie groups config add-mcp-server \
   --id <group-id> \
   --name calendar \
   --command google-calendar-mcp \
@@ -145,11 +145,11 @@ ncl groups config add-mcp-server \
   --env '{"GOOGLE_OAUTH_CREDENTIALS":"/workspace/extra/.calendar-mcp/gcp-oauth.keys.json","GOOGLE_CALENDAR_MCP_TOKEN_PATH":"/workspace/extra/.calendar-mcp/credentials.json"}'
 ```
 
-Approval behaviour depends on where you run it: from inside an agent's container `ncl` write verbs are approval-gated (admin approves before it lands); from a host operator shell with full scope, it executes immediately. Either way, the response tells you which path it took.
+Approval behaviour depends on where you run it: from inside an agent's container `clawie` write verbs are approval-gated (admin approves before it lands); from a host operator shell with full scope, it executes immediately. Either way, the response tells you which path it took.
 
 ### Add the `.calendar-mcp` mount
 
-There is no `ncl groups config add-mount` verb yet (tracked in [#2395](https://github.com/nanocoai/nanoclaw/issues/2395)). Until that ships, edit the DB directly via the in-tree wrapper (`scripts/q.ts` — `setup/verify.ts:5` codifies that NanoClaw avoids depending on the `sqlite3` CLI binary, so don't shell out to it):
+There is no `clawie groups config add-mount` verb yet (tracked in [#2395](https://github.com/nanocoai/clawie/issues/2395)). Until that ships, edit the DB directly via the in-tree wrapper (`scripts/q.ts` — `setup/verify.ts:5` codifies that Clawie avoids depending on the `sqlite3` CLI binary, so don't shell out to it):
 
 ```bash
 GROUP_ID='<group-id>'
@@ -161,15 +161,15 @@ pnpm exec tsx scripts/q.ts data/v2.db "UPDATE container_configs \
   WHERE agent_group_id = '$GROUP_ID';"
 ```
 
-Run from your NanoClaw project root (where `data/v2.db` lives). The `$[#]` placeholder is SQLite JSON1's append-to-end notation; it's `\$`-escaped so bash doesn't arithmetic-expand it before sqlite sees it. `updated_at` is ISO-string everywhere else in the schema, so use `datetime('now')` — not `strftime('%s','now')`, which would silently mix epoch ints into a column of YYYY-MM-DD HH:MM:SS strings.
+Run from your Clawie project root (where `data/v2.db` lives). The `$[#]` placeholder is SQLite JSON1's append-to-end notation; it's `\$`-escaped so bash doesn't arithmetic-expand it before sqlite sees it. `updated_at` is ISO-string everywhere else in the schema, so use `datetime('now')` — not `strftime('%s','now')`, which would silently mix epoch ints into a column of YYYY-MM-DD HH:MM:SS strings.
 
-**Switch to `ncl groups config add-mount` once #2395 lands.** Update this skill at that time.
+**Switch to `clawie groups config add-mount` once #2395 lands.** Update this skill at that time.
 
 `containerPath` is relative (mount-security rejects absolute paths — additional mounts land at `/workspace/extra/<relative>`).
 
 **Why this can't be `groups/<folder>/container.json`:** post-migration `014-container-configs`, `materializeContainerJson` in `src/container-config.ts` rewrites that file from the DB on every spawn. Anything hand-edited there is silently overwritten on next restart.
 
-**Same-group-as-gmail tip:** if this group already has the gmail MCP + `.gmail-mcp` mount, both coexist — `ncl groups config add-mcp-server` only updates the named entry, and `json_insert` appends to `additional_mounts` without disturbing existing entries.
+**Same-group-as-gmail tip:** if this group already has the gmail MCP + `.gmail-mcp` mount, both coexist — `clawie groups config add-mcp-server` only updates the named entry, and `json_insert` appends to `additional_mounts` without disturbing existing entries.
 
 ## Phase 4: Build and Restart
 
@@ -177,7 +177,7 @@ Run from your NanoClaw project root (where `data/v2.db` lives). The `$[#]` place
 pnpm run build
 ```
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -188,7 +188,7 @@ systemctl --user restart $(systemd_unit)              # Linux
 Kill any existing agent containers so they respawn with the new mcpServers config:
 
 ```bash
-docker ps -q --filter 'name=nanoclaw-v2-' | xargs -r docker kill
+docker ps -q --filter 'name=clawie-v2-' | xargs -r docker kill
 ```
 
 ## Phase 5: Verify
@@ -202,20 +202,20 @@ docker ps -q --filter 'name=nanoclaw-v2-' | xargs -r docker kill
 ### Check logs if the tool isn't working
 
 ```bash
-tail -100 logs/nanoclaw.log | grep -iE 'calendar|mcp'
+tail -100 logs/clawie.log | grep -iE 'calendar|mcp'
 ```
 
 Common signals:
 - `command not found: google-calendar-mcp` → image not rebuilt.
 - `ENOENT ...credentials.json` → mount missing. Check the mount allowlist.
 - `401 Unauthorized` from `*.googleapis.com` → OneCLI isn't injecting; verify agent's secret mode and that Google Calendar is connected.
-- Agent says "I don't have calendar tools" → the `calendar` MCP server isn't registered in this group's `mcpServers` (re-run the `ncl groups config add-mcp-server` step in Phase 3 for that group and restart it), or the agent-runner image is stale (`./container/build.sh`, `--no-cache` if suspicious).
+- Agent says "I don't have calendar tools" → the `calendar` MCP server isn't registered in this group's `mcpServers` (re-run the `clawie groups config add-mcp-server` step in Phase 3 for that group and restart it), or the agent-runner image is stale (`./container/build.sh`, `--no-cache` if suspicious).
 
 ## Removal
 
 1. For each group that had Calendar wired, remove the MCP server from the DB:
    ```bash
-   ncl groups config remove-mcp-server --id <group-id> --name calendar
+   clawie groups config remove-mcp-server --id <group-id> --name calendar
    ```
 2. Remove the `.calendar-mcp` mount from the DB (no `remove-mount` verb yet — same #2395 dependency):
    ```bash

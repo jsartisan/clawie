@@ -12,8 +12,8 @@ Adds Linear support via the Chat SDK bridge. The agent participates in issue com
 **Recommended:** Create a Linear **OAuth application** so the agent posts as an app identity, not as you. This prevents the adapter from filtering your own comments as self-messages.
 
 1. Go to [Linear Settings > API > OAuth Applications](https://linear.app/settings/api/applications/new)
-2. Create an app (e.g. "NanoClaw Bot")
-   - Developer URL: your repo URL (e.g. `https://github.com/your-org/nanoclaw`)
+2. Create an app (e.g. "Clawie Bot")
+   - Developer URL: your repo URL (e.g. `https://github.com/your-org/clawie`)
    - Callback URL: `http://localhost`
 3. After creating, click the app and enable **Client credentials** under grant types
 4. Copy the **Client ID** and **Client Secret**
@@ -22,7 +22,7 @@ Adds Linear support via the Chat SDK bridge. The agent participates in issue com
 
 ## Install
 
-NanoClaw doesn't ship channels in trunk. This skill copies the Linear adapter in from the `channels` branch and patches the Chat SDK bridge to support catch-all message forwarding (Linear OAuth apps can't be @-mentioned).
+Clawie doesn't ship channels in trunk. This skill copies the Linear adapter in from the `channels` branch and patches the Chat SDK bridge to support catch-all message forwarding (Linear OAuth apps can't be @-mentioned).
 
 ### Pre-flight (idempotent)
 
@@ -101,7 +101,7 @@ pnpm run build
 ### 1. Set up a webhook
 
 1. Go to **Linear Settings** > **API** > **Webhooks** > **New webhook**
-2. Label: `NanoClaw`
+2. Label: `Clawie`
 3. URL: `https://your-domain/webhook/linear` (the shared webhook server, default port 3000)
 4. Team: select the team you want to monitor
 5. Events: check **Comment**
@@ -122,7 +122,7 @@ LINEAR_CLIENT_SECRET=your-client-secret
 # LINEAR_API_KEY=lin_api_...
 
 LINEAR_WEBHOOK_SECRET=your-webhook-signing-secret
-LINEAR_BOT_USERNAME=NanoClaw Bot
+LINEAR_BOT_USERNAME=Clawie Bot
 LINEAR_TEAM_KEY=ENG
 ```
 
@@ -158,7 +158,7 @@ If you're in the middle of `/setup`, return to the setup flow now.
 
 Otherwise, restart the service to pick up the new channel.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh

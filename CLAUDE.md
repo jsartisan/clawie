@@ -1,4 +1,4 @@
-# NanoClaw
+# Clawie
 
 Personal Claude assistant. See [README.md](README.md) for philosophy and setup. Architecture lives in `docs/`.
 
@@ -67,14 +67,14 @@ For ad-hoc queries from skills or scripts, use the in-tree wrapper rather than t
 | `groups/<folder>/` | Per-agent-group filesystem (CLAUDE.md, skills, per-group `agent-runner-src/` overlay) |
 | `scripts/init-first-agent.ts` | Bootstrap the first DM-wired agent (used by `/init-first-agent` skill) |
 
-## Admin CLI (`ncl`)
+## Admin CLI (`clawie`)
 
-`ncl` queries and modifies the central DB — agent groups, messaging groups, wirings, users, roles, and more. On the host it connects via Unix socket (`src/cli/socket-server.ts`); inside containers it uses the session DB transport (`container/agent-runner/src/cli/ncl.ts`).
+`clawie` queries and modifies the central DB — agent groups, messaging groups, wirings, users, roles, and more. On the host it connects via Unix socket (`src/cli/socket-server.ts`); inside containers it uses the session DB transport (`container/agent-runner/src/cli/clawie.ts`).
 
 ```
-ncl <resource> <verb> [<id>] [--flags]
-ncl <resource> help
-ncl help
+clawie <resource> <verb> [<id>] [--flags]
+clawie <resource> help
+clawie help
 ```
 
 | Resource | Verbs | What it is |
@@ -112,13 +112,13 @@ A second tier (direct source-level self-edits via a draft/activate flow) is plan
 
 ## Container Config
 
-Per-agent-group container runtime config (provider, model, packages, MCP servers, mounts, etc.) lives in the `container_configs` table in the central DB. Materialized to `groups/<folder>/container.json` at spawn time so the container runner can read it. Managed via `ncl groups config get/update` and the self-mod MCP tools.
+Per-agent-group container runtime config (provider, model, packages, MCP servers, mounts, etc.) lives in the `container_configs` table in the central DB. Materialized to `groups/<folder>/container.json` at spawn time so the container runner can read it. Managed via `clawie groups config get/update` and the self-mod MCP tools.
 
-**`cli_scope`** — controls what the agent can do with `ncl` from inside the container:
+**`cli_scope`** — controls what the agent can do with `clawie` from inside the container:
 
 | Value | Behavior |
 |-------|----------|
-| `disabled` | Agent never learns about ncl (instructions excluded from CLAUDE.md). Host dispatch rejects any `cli_request`. |
+| `disabled` | Agent never learns about clawie (instructions excluded from CLAUDE.md). Host dispatch rejects any `cli_request`. |
 | `group` (default) | Agent can access `groups`, `sessions`, `destinations`, `members` only, scoped to its own agent group. `--id` and group args are auto-filled. Cross-group access rejected. `cli_scope` changes blocked. |
 | `global` | Unrestricted. Set automatically for owner agent groups via `init-first-agent`. |
 
@@ -126,7 +126,7 @@ Key files: `src/db/container-configs.ts`, `src/container-config.ts`, `src/cli/di
 
 ## Container Restart
 
-`ncl groups restart --id <group-id> [--rebuild] [--message <text>]`. Kills running containers; if `--message` is provided, writes an `on_wake` message and respawns via `onExit` callback. Without `--message`, containers come back on the next user message. From inside a container, `--id` is auto-filled and only the calling session is restarted.
+`clawie groups restart --id <group-id> [--rebuild] [--message <text>]`. Kills running containers; if `--message` is provided, writes an `on_wake` message and respawns via `onExit` callback. Without `--message`, containers come back on the next user message. From inside a container, `--id` is auto-filled and only the calling session is restarted.
 
 The `on_wake` column on `messages_in` ensures wake messages are only picked up by a fresh container's first poll iteration. This prevents the race where a dying container (still in its SIGTERM grace period) could steal the message. `killContainer` accepts an optional `onExit` callback that fires after the process exits, guaranteeing the old container is gone before the new one spawns.
 
@@ -167,7 +167,7 @@ If you've just enabled `mode all`, no container restart is needed — the gatewa
 Approval-gating credentialed actions is a **two-sided** flow:
 
 - **Server-side** (OneCLI gateway): decides *when* to hold a request and emit a pending approval. As of `onecli@1.3.0`, the CLI does **not** expose this — `rules create --action` only accepts `block` or `rate_limit`, and `secrets create` has no approval flag. Approval policies must be configured via the OneCLI web UI at `http://127.0.0.1:10254`. If/when the CLI grows an `approve` action, this section needs updating.
-- **Host-side** (nanoclaw): receives pending approvals and routes them to a human. `src/modules/approvals/onecli-approvals.ts` registers a callback via `onecli.configureManualApproval(cb)` (long-polls `GET /api/approvals/pending`). The callback uses `pickApprover` + `pickApprovalDelivery` from `src/modules/approvals/primitive.ts` to DM an approver. Approvers are resolved from the `user_roles` table — preference order: scoped admins for the agent group → global admins → owners. There is no env var like `NANOCLAW_ADMIN_USER_IDS`; roles are persisted in the central DB only.
+- **Host-side** (clawie): receives pending approvals and routes them to a human. `src/modules/approvals/onecli-approvals.ts` registers a callback via `onecli.configureManualApproval(cb)` (long-polls `GET /api/approvals/pending`). The callback uses `pickApprover` + `pickApprovalDelivery` from `src/modules/approvals/primitive.ts` to DM an approver. Approvers are resolved from the `user_roles` table — preference order: scoped admins for the agent group → global admins → owners. There is no env var like `CLAWIE_ADMIN_USER_IDS`; roles are persisted in the central DB only.
 
 If approvals are configured server-side but the host callback isn't running (or throws), every credentialed call hangs until the gateway times out. Conversely, if the gateway has no rule asking for approval, the host callback never fires regardless of how it's wired.
 
@@ -177,7 +177,7 @@ Four types of skills. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full taxono
 
 - **Channel/provider install skills** — copy the relevant module(s) in from the `channels` or `providers` branch, wire imports, install pinned deps (e.g. `/add-discord`, `/add-slack`, `/add-whatsapp`, `/add-opencode`).
 - **Utility skills** — ship code files alongside `SKILL.md` (e.g. `/claw`).
-- **Operational skills** — instruction-only workflows (`/setup`, `/debug`, `/customize`, `/init-first-agent`, `/manage-channels`, `/init-onecli`, `/update-nanoclaw`).
+- **Operational skills** — instruction-only workflows (`/setup`, `/debug`, `/customize`, `/init-first-agent`, `/manage-channels`, `/init-onecli`, `/update-clawie`).
 - **Container skills** — loaded inside agent containers at runtime (`container/skills/`: `onecli-gateway`, `welcome`, `self-customize`, `agent-browser`, `slack-formatting`).
 
 | Skill | When to Use |
@@ -187,7 +187,7 @@ Four types of skills. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full taxono
 | `/manage-channels` | Wire channels to agent groups with isolation level decisions |
 | `/customize` | Adding channels, integrations, behavior changes |
 | `/debug` | Container issues, logs, troubleshooting |
-| `/update-nanoclaw` | Bring upstream updates into a customized install |
+| `/update-clawie` | Bring upstream updates into a customized install |
 | `/init-onecli` | Install OneCLI Agent Vault and migrate `.env` credentials |
 
 ## Contributing
@@ -213,7 +213,7 @@ Run commands directly — don't tell the user to run them.
 # Host (Node + pnpm)
 pnpm run dev          # Host with hot reload
 pnpm run build        # Compile host TypeScript (src/)
-./container/build.sh  # Rebuild agent container image (nanoclaw-agent:latest)
+./container/build.sh  # Rebuild agent container image (clawie-agent:latest)
 pnpm test             # Host tests (vitest)
 
 # Agent-runner (Bun — separate package tree under container/agent-runner/)
@@ -234,23 +234,23 @@ Portal IA (non-technical persona — "agents", "connections", "integrations", ne
 
 ## Multi-Tenancy (workspaces)
 
-One nanoclaw instance serves many tenants. A **workspace** is the tenant boundary (migration 019): `workspace_id` lives on exactly three tables — `portal_accounts`, `agent_groups`, `channel_accounts` — and everything else (sessions, container configs, wirings, approvals, routines) resolves its workspace through its agent group. `workspaces` rows live in the central DB (`src/db/workspaces.ts`); `ws-default` is created by the migration and owns everything that predates multi-tenancy.
+One clawie instance serves many tenants. A **workspace** is the tenant boundary (migration 019): `workspace_id` lives on exactly three tables — `portal_accounts`, `agent_groups`, `channel_accounts` — and everything else (sessions, container configs, wirings, approvals, routines) resolves its workspace through its agent group. `workspaces` rows live in the central DB (`src/db/workspaces.ts`); `ws-default` is created by the migration and owns everything that predates multi-tenancy.
 
 Portal signup is open: the **first** account becomes the **operator** (`is_operator = 1`, claims `ws-default`, sees all workspaces + the Advanced resource pages); every later signup gets a fresh isolated workspace. The bearer token (`NCL_PORTAL_TOKEN`) is always operator-level. `CallerContext` for portal callers carries `{ workspaceId, operator }` (`src/cli/portal-auth.ts` resolves it from the session cookie).
 
 Enforcement lives in `src/cli/workspace-scope.ts` + `src/cli/dispatch.ts`, mirroring the agent-group scoping pattern: tenants are whitelisted to four resources (`groups`, `channel-accounts`, `approvals`, `sessions`); creates are pinned to the caller's workspace (spoofed `workspace_id` → forbidden); id-targeting ops answer **not-found** for cross-workspace ids (no existence oracle); generic list/get rows are post-filtered. Portal commands without a `resource` (`agent-*`, `chat-*`, `integrations-*`, `routines-*`) self-guard via `assertGroupInWorkspace` / `groupVisibleToCaller`, and the webchat HTTP endpoints check the `portal-<group-id>` platform id against the caller's workspace. Sub-agents created agent-to-agent inherit the parent group's workspace; host/CLI callers are unscoped.
 
-Operator tooling: the `workspaces` resource (`ncl workspaces list/get/update`, operator-only) plus `ncl workspaces usage` — per-workspace metering (accounts, agents, bots, sessions, pending approvals). Tests: `src/cli/workspace-scope.test.ts`.
+Operator tooling: the `workspaces` resource (`clawie workspaces list/get/update`, operator-only) plus `clawie workspaces usage` — per-workspace metering (accounts, agents, bots, sessions, pending approvals). Tests: `src/cli/workspace-scope.test.ts`.
 
 Service management:
 ```bash
 # macOS (launchd)
-launchctl load   ~/Library/LaunchAgents/com.nanoclaw.plist
-launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist
-launchctl kickstart -k gui/$(id -u)/com.nanoclaw  # restart
+launchctl load   ~/Library/LaunchAgents/com.clawie.plist
+launchctl unload ~/Library/LaunchAgents/com.clawie.plist
+launchctl kickstart -k gui/$(id -u)/com.clawie  # restart
 
 # Linux (systemd)
-systemctl --user start|stop|restart nanoclaw
+systemctl --user start|stop|restart clawie
 ```
 
 ## Troubleshooting
@@ -259,7 +259,7 @@ Check these first when something goes wrong:
 
 | What | Where |
 |------|-------|
-| Host logs | `logs/nanoclaw.error.log` first (delivery failures, crash-loop backoff, warnings), then `logs/nanoclaw.log` for the full routing chain |
+| Host logs | `logs/clawie.error.log` first (delivery failures, crash-loop backoff, warnings), then `logs/clawie.log` for the full routing chain |
 | Setup logs | `logs/setup.log` (overall), `logs/setup-steps/*.log` (per-step: bootstrap, environment, container, onecli, mounts, service, etc.) |
 | Session DBs | `data/v2-sessions/<agent-group>/<session>/` — `inbound.db` (`messages_in`: did the message reach the container?), `outbound.db` (`messages_out`: did the agent produce a response?) |
 
@@ -317,8 +317,8 @@ grep -q '^INSTALL_CJK_FONTS=' .env && sed -i.bak 's/^INSTALL_CJK_FONTS=.*/INSTAL
 
 # Rebuild and restart so new sessions pick up the new image
 ./container/build.sh
-launchctl kickstart -k gui/$(id -u)/com.nanoclaw   # macOS
-# systemctl --user restart nanoclaw                # Linux
+launchctl kickstart -k gui/$(id -u)/com.clawie   # macOS
+# systemctl --user restart clawie                # Linux
 ```
 
 `container/build.sh` reads `INSTALL_CJK_FONTS` from `.env` and passes it through as a Docker build-arg. Without CJK fonts, Chromium-rendered screenshots and PDFs containing CJK text show tofu (empty rectangles) instead of characters.

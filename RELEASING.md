@@ -1,4 +1,4 @@
-# Releasing NanoClaw
+# Releasing Clawie
 
 Starting with v2.0.63, the goal is to publish a GitHub Release for every `package.json` version bump that lands on `main`. Releases are cut manually by a maintainer, so there can be lag between a bump merging and its release being published. The intent is *timeliness*, not strict 1:1 correlation with every bump.
 
@@ -29,8 +29,8 @@ A release is cut by a maintainer publishing it. The trigger is a `package.json` 
 2. Once the bump commit lands on `main`, open a draft GitHub Release:
    - **Tag:** `vX.Y.Z`, target `main`.
    - **Title:** `vX.Y.Z` (bare version — descriptive content lives in the body, matching the CHANGELOG header pattern).
-   - **Body:** copy the CHANGELOG entry verbatim. Append a `## Contributors` section listing every PR author who landed work in the release window. Append a `**Full Changelog**: https://github.com/nanocoai/nanoclaw/compare/<prev-tag>...vX.Y.Z` line at the bottom.
-3. If anyone in the window opened their first NanoClaw PR, add a `## New Contributors` section above `## Contributors`, with each first-timer's first PR link and an invite to Discord.
+   - **Body:** copy the CHANGELOG entry verbatim. Append a `## Contributors` section listing every PR author who landed work in the release window. Append a `**Full Changelog**: https://github.com/nanocoai/clawie/compare/<prev-tag>...vX.Y.Z` line at the bottom.
+3. If anyone in the window opened their first Clawie PR, add a `## New Contributors` section above `## Contributors`, with each first-timer's first PR link and an invite to Discord.
 4. Publish (not just save draft).
 
 ## Rollup releases
@@ -39,10 +39,10 @@ If multiple `package.json` bumps land between two GitHub Releases (as happened b
 
 ## Channels and stability
 
-NanoClaw currently ships a single channel: every published release is a stable release.
+Clawie currently ships a single channel: every published release is a stable release.
 
 - **Latest** — the most recent release on `main`, shown as "Latest release" on the GitHub Releases page. Consumers that want auto-bump follow GitHub's `/releases/latest` pointer.
-- **Stable** — currently identical to latest. NanoClaw has no separate stable branch and no pre-release/RC channel.
+- **Stable** — currently identical to latest. Clawie has no separate stable branch and no pre-release/RC channel.
 - **Pinned** — any tagged release. Reproducible and the recommended choice for packagers and forks; published tags are not moved or retracted.
 
 If a pre-release channel is introduced later (e.g. `vX.Y.Z-rc.N`), those releases will be marked "Pre-release" on GitHub so they do not become the `latest` pointer, and this section will be updated to describe the promotion path.

@@ -7,7 +7,7 @@ description: Add Signal channel integration via signal-cli TCP daemon. Native ad
 
 Adds Signal messaging support via a native adapter that speaks JSON-RPC to a [signal-cli](https://github.com/AsamK/signal-cli) TCP daemon. No Chat SDK bridge — only Node.js builtins (`node:net`, `node:child_process`, `node:fs`).
 
-Unlike Telegram or Discord, Signal has no bot API. NanoClaw registers as a full Signal account on a dedicated phone number (recommended) or links as a secondary device on your existing number.
+Unlike Telegram or Discord, Signal has no bot API. Clawie registers as a full Signal account on a dedicated phone number (recommended) or links as a secondary device on your existing number.
 
 ## Prerequisites
 
@@ -47,7 +47,7 @@ Two paths. The new-number path is recommended and battle-tested.
 
 ### Path A: Register a new number (recommended)
 
-Use a dedicated SIM or VoIP number. NanoClaw owns it entirely.
+Use a dedicated SIM or VoIP number. Clawie owns it entirely.
 
 > **VoIP numbers:** Signal requires SMS verification before voice. Some VoIP providers are blocked even for voice calls. If registration fails with an auth error, try a different provider or a physical SIM.
 
@@ -88,9 +88,9 @@ No output = success.
 
 **Step 5: Set profile name (optional)**
 
-> ⚠ Stop NanoClaw before running signal-cli commands — the daemon holds an exclusive lock on its data directory while running.
+> ⚠ Stop Clawie before running signal-cli commands — the daemon holds an exclusive lock on its data directory while running.
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -109,10 +109,10 @@ systemctl --user start $(systemd_unit)
 
 ### Path B: Link as secondary device
 
-Joins an existing Signal account as a secondary device. Simpler, but NanoClaw shares your personal number.
+Joins an existing Signal account as a secondary device. Simpler, but Clawie shares your personal number.
 
 ```bash
-signal-cli -a +1YOURNUMBER link --name "NanoClaw"
+signal-cli -a +1YOURNUMBER link --name "Clawie"
 ```
 
 This prints a `tsdevice:` URI. Scan it as a QR code on your phone: **Settings → Linked Devices → Link New Device**. QR codes expire in ~30 seconds — re-run if it expires.
@@ -175,7 +175,7 @@ SIGNAL_TCP_PORT=7583
 # Path to the signal-cli binary (default: resolved on PATH)
 SIGNAL_CLI_PATH=/usr/local/bin/signal-cli
 
-# Whether NanoClaw manages the daemon lifecycle (default: true).
+# Whether Clawie manages the daemon lifecycle (default: true).
 # Set to false if you run signal-cli daemon externally.
 SIGNAL_MANAGE_DAEMON=true
 
@@ -189,7 +189,7 @@ Sync to container: `mkdir -p data/env && cp .env data/env/env`
 
 ### Restart
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh
@@ -278,7 +278,7 @@ Not supported yet: outbound file attachments (logged and dropped), edit/delete m
 ### Daemon not reachable
 
 ```bash
-grep "Signal" logs/nanoclaw.log | tail
+grep "Signal" logs/clawie.log | tail
 ```
 
 If you see `Signal daemon failed to start. Is signal-cli installed and your account linked?`:
@@ -289,10 +289,10 @@ If you see `Signal daemon not reachable at 127.0.0.1:7583` and `SIGNAL_MANAGE_DA
 
 ### Bot not responding
 
-1. Channel initialized: `grep "Signal channel connected" logs/nanoclaw.log | tail -1`
+1. Channel initialized: `grep "Signal channel connected" logs/clawie.log | tail -1`
 2. Channel wired: `pnpm exec tsx scripts/q.ts data/v2.db "SELECT mg.platform_id, mg.name FROM messaging_groups mg JOIN messaging_group_agents mga ON mg.id = mga.messaging_group_id WHERE mg.channel_type='signal'"`
 3. Service running: `launchctl print gui/$(id -u)/"$(. setup/lib/install-slug.sh && launchd_label)"` (macOS) / `systemctl --user status "$(. setup/lib/install-slug.sh && systemd_unit)"` (Linux)
-4. **Check for duplicate service instances** — if `logs/nanoclaw.error.log` shows `No adapter for channel type channelType="signal"` despite the adapter starting, two NanoClaw processes are racing. See the `/debug` skill section "No adapter for channel type / Messages silently lost" for the full fix.
+4. **Check for duplicate service instances** — if `logs/clawie.error.log` shows `No adapter for channel type channelType="signal"` despite the adapter starting, two Clawie processes are racing. See the `/debug` skill section "No adapter for channel type / Messages silently lost" for the full fix.
 
 ### Messages delivered but never arrive (null platformMsgId)
 
@@ -316,7 +316,7 @@ You must request SMS first, wait ~60 seconds, then request voice. Both steps can
 
 ### Config file in use / daemon lock
 
-signal-cli holds an exclusive lock on its data directory while the daemon is running. Stop NanoClaw before running any `signal-cli` commands directly, then restart afterward.
+signal-cli holds an exclusive lock on its data directory while the daemon is running. Stop Clawie before running any `signal-cli` commands directly, then restart afterward.
 
 ### Group replies going to DM instead of group
 

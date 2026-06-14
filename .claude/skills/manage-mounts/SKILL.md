@@ -5,12 +5,12 @@ description: Configure which host directories agent containers can access. View,
 
 # Manage Mounts
 
-Configure which host directories NanoClaw agent containers can access. The mount allowlist lives at `~/.config/nanoclaw/mount-allowlist.json`.
+Configure which host directories Clawie agent containers can access. The mount allowlist lives at `~/.config/clawie/mount-allowlist.json`.
 
 ## Show Current Config
 
 ```bash
-cat ~/.config/nanoclaw/mount-allowlist.json 2>/dev/null || echo "No mount allowlist configured"
+cat ~/.config/clawie/mount-allowlist.json 2>/dev/null || echo "No mount allowlist configured"
 ```
 
 Show the current config to the user in a readable format: which directories are allowed, whether non-main agents are read-only.
@@ -43,7 +43,7 @@ npx tsx setup/index.ts --step mounts --force -- --empty
 
 Restart the service so containers pick up the new config (the unit/label names are per-install — see `setup/lib/install-slug.sh`).
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 source setup/lib/install-slug.sh

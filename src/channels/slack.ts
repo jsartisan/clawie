@@ -3,7 +3,7 @@
  *
  * Unlike the other Chat SDK channels, Slack here uses a *native* adapter built
  * directly on `@slack/socket-mode` + `@slack/web-api`. Socket Mode opens an
- * outbound WebSocket to Slack, so NanoClaw never needs a public webhook URL,
+ * outbound WebSocket to Slack, so Clawie never needs a public webhook URL,
  * ngrok tunnel, or the shared `webhook-server.ts`. Events, button clicks, and
  * (optionally) slash commands all arrive over that single connection.
  *

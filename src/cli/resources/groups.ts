@@ -186,7 +186,7 @@ registerResource({
           }
           killContainer(
             ctx.sessionId,
-            'restarted via ncl',
+            'restarted via clawie',
             message
               ? () => {
                   const s = getSession(ctx.sessionId);
@@ -198,7 +198,7 @@ registerResource({
         }
 
         // From the host: restart all running containers in the group
-        const count = restartAgentGroupContainers(id, 'restarted via ncl', message);
+        const count = restartAgentGroupContainers(id, 'restarted via clawie', message);
         return { restarted: count, rebuilt: !!args.rebuild };
       },
     },
@@ -216,7 +216,7 @@ registerResource({
     'config update': {
       access: 'approval',
       description:
-        'Update container config scalar fields. Changes are saved but do NOT take effect until you run `ncl groups restart`. ' +
+        'Update container config scalar fields. Changes are saved but do NOT take effect until you run `clawie groups restart`. ' +
         'Use --id <group-id> and any of: --provider, --model, --effort, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope.',
       handler: async (args) => {
         const id = args.id as string;
@@ -260,7 +260,7 @@ registerResource({
     'config add-mcp-server': {
       access: 'approval',
       description:
-        'Add an MCP server to a group. Requires `ncl groups restart` to take effect. ' +
+        'Add an MCP server to a group. Requires `clawie groups restart` to take effect. ' +
         'Use --id <group-id> --name <server-name> --command <cmd> [--args <json-array>] [--env <json-object>].',
       handler: async (args) => {
         const id = args.id as string;
@@ -287,7 +287,7 @@ registerResource({
     'config remove-mcp-server': {
       access: 'approval',
       description:
-        'Remove an MCP server from a group. Requires `ncl groups restart` to take effect. Use --id <group-id> --name <server-name>.',
+        'Remove an MCP server from a group. Requires `clawie groups restart` to take effect. Use --id <group-id> --name <server-name>.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
@@ -308,7 +308,7 @@ registerResource({
     'config add-package': {
       access: 'approval',
       description:
-        'Add a package to a group. Requires `ncl groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
+        'Add a package to a group. Requires `clawie groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
@@ -344,7 +344,7 @@ registerResource({
     'config remove-package': {
       access: 'approval',
       description:
-        'Remove a package from a group. Requires `ncl groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
+        'Remove a package from a group. Requires `clawie groups restart --rebuild` to take effect. Use --id <group-id> and --apt <pkg> or --npm <pkg>.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');

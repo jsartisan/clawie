@@ -1,16 +1,16 @@
 ---
 name: add-dashboard
-description: Add a monitoring dashboard to NanoClaw. Installs @nanoco/nanoclaw-dashboard and a pusher that sends periodic JSON snapshots.
+description: Add a monitoring dashboard to Clawie. Installs @clawie/clawie-dashboard and a pusher that sends periodic JSON snapshots.
 ---
 
-# /add-dashboard — NanoClaw Dashboard
+# /add-dashboard — Clawie Dashboard
 
 Adds a local monitoring dashboard showing agent groups, sessions, channels, users, token usage, context windows, message activity, and real-time logs.
 
 ## Architecture
 
 ```
-NanoClaw (pusher)              Dashboard (npm package)
+Clawie (pusher)              Dashboard (npm package)
 ┌──────────┐    POST JSON      ┌──────────────┐
 │ collects │ ────────────────→ │ /api/ingest  │
 │ DB data  │   every 60s       │ in-memory    │
@@ -25,7 +25,7 @@ NanoClaw (pusher)              Dashboard (npm package)
 ### 1. Install the npm package
 
 ```bash
-pnpm install @nanoco/nanoclaw-dashboard
+pnpm install @clawie/clawie-dashboard
 ```
 
 ### 2. Copy the pusher module
@@ -65,7 +65,7 @@ Add the `readEnvFile` import at the top if not already present:
 import { readEnvFile } from './env.js';
 ```
 
-Add after step 7 (OneCLI approval handler), before the `log.info('NanoClaw running')` line:
+Add after step 7 (OneCLI approval handler), before the `log.info('Clawie running')` line:
 
 ```typescript
   // 8. Dashboard (optional)
@@ -73,7 +73,7 @@ Add after step 7 (OneCLI approval handler), before the `log.info('NanoClaw runni
   const dashboardSecret = process.env.DASHBOARD_SECRET || dashboardEnv.DASHBOARD_SECRET;
   const dashboardPort = parseInt(process.env.DASHBOARD_PORT || dashboardEnv.DASHBOARD_PORT || '3100', 10);
   if (dashboardSecret) {
-    const { startDashboard } = await import('@nanoco/nanoclaw-dashboard');
+    const { startDashboard } = await import('@clawie/clawie-dashboard');
     const { startDashboardPusher } = await import('./dashboard-pusher.js');
     startDashboard({ port: dashboardPort, secret: dashboardSecret });
     startDashboardPusher({ port: dashboardPort, secret: dashboardSecret, intervalMs: 60000 });
@@ -93,7 +93,7 @@ Generate the secret: `node -e "console.log('nc-' + require('crypto').randomBytes
 
 ### 6. Build and restart
 
-Run from your NanoClaw project root:
+Run from your Clawie project root:
 
 ```bash
 pnpm run build
@@ -128,12 +128,12 @@ Open `http://localhost:3100/dashboard` in a browser.
 - **"No data yet"**: Wait 60s for first push, or check logs for push errors
 - **401 errors**: Verify `DASHBOARD_SECRET` matches in `.env`
 - **Port conflict**: Change `DASHBOARD_PORT` in `.env`
-- **No logs**: Check `logs/nanoclaw.log` exists
+- **No logs**: Check `logs/clawie.log` exists
 
 ## Removal
 
 ```bash
-pnpm uninstall @nanoco/nanoclaw-dashboard
+pnpm uninstall @clawie/clawie-dashboard
 rm src/dashboard-pusher.ts
 # Remove the dashboard block from src/index.ts
 # Remove DASHBOARD_SECRET and DASHBOARD_PORT from .env

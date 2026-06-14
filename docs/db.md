@@ -1,4 +1,4 @@
-# NanoClaw Database Architecture — Overview
+# Clawie Database Architecture — Overview
 
 Orientation for the data model: the three databases, how they fit together, and the invariants that hold across them. For table-level schemas, follow the links below.
 
@@ -15,11 +15,11 @@ A few words recur throughout the schema and are easy to conflate. Pin them down 
 
 | Term | What it means | Example |
 |------|---------------|---------|
-| **Channel** | A messaging *service* NanoClaw integrates with. This is the concept word the code uses everywhere — `channel_type`, `ChannelAdapter`, the channel registry. | `telegram`, `slack` |
+| **Channel** | A messaging *service* Clawie integrates with. This is the concept word the code uses everywhere — `channel_type`, `ChannelAdapter`, the channel registry. | `telegram`, `slack` |
 | **Channel account** | One specific bot/app instance on a channel. Lets one channel run multiple bots. | `"MyHelperBot"` vs `"WorkBot"`, both on Telegram |
 | **Platform** | The *external service itself* (the outside world). Not a separate concept from "channel" — used only when referring to the service's own behavior/identifiers, never as a competing label. Its only structural footprint is `platform_id`. | the Telegram API |
-| **`platform_id`** | The ID the external service assigns to one chat/user. NanoClaw stores it verbatim, namespaced by channel. | `"telegram:123456789"` |
-| **Messaging group** | NanoClaw's record of one specific conversation, identified by `(channel_type, platform_id)`. | your 1:1 DM with the bot |
+| **`platform_id`** | The ID the external service assigns to one chat/user. Clawie stores it verbatim, namespaced by channel. | `"telegram:123456789"` |
+| **Messaging group** | Clawie's record of one specific conversation, identified by `(channel_type, platform_id)`. | your 1:1 DM with the bot |
 
 Rule of thumb: say **"channel"** for the service-level concept (it's the consistent code term); reserve **"platform"** for the external service and its `platform_id`. A conversation is uniquely pinned by *which channel* + *which platform_id*.
 
@@ -27,7 +27,7 @@ Rule of thumb: say **"channel"** for the service-level concept (it's the consist
 
 ## 1. The three databases
 
-NanoClaw uses **three kinds of SQLite database**, all on the host filesystem:
+Clawie uses **three kinds of SQLite database**, all on the host filesystem:
 
 | DB | Location | Writer | Readers | Purpose |
 |----|----------|--------|---------|---------|

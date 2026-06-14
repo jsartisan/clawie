@@ -12,14 +12,14 @@ function log(msg: string): void {
   console.error(`[claude-provider] ${msg}`);
 }
 
-// Deferred SDK builtins that either sidestep nanoclaw's own scheduling or
+// Deferred SDK builtins that either sidestep clawie's own scheduling or
 // don't fit our async message-passing model (they're designed for Claude
 // Code's interactive UI and would hang here).
 //
 // - CronCreate / CronDelete / CronList / ScheduleWakeup: we have durable
-//   scheduling via mcp__nanoclaw__schedule_task.
+//   scheduling via mcp__clawie__schedule_task.
 // - AskUserQuestion: SDK returns a placeholder instead of blocking on a
-//   real answer — we have mcp__nanoclaw__ask_user_question that persists
+//   real answer — we have mcp__clawie__ask_user_question that persists
 //   the question and blocks on the real reply.
 // - EnterPlanMode / ExitPlanMode / EnterWorktree / ExitWorktree: Claude
 //   Code UI affordances; in a headless container they'd appear stuck.
@@ -35,7 +35,7 @@ const SDK_DISALLOWED_TOOLS = [
   'ExitWorktree',
 ];
 
-// Tool allowlist for NanoClaw agent containers. MCP-tool entries are derived
+// Tool allowlist for Clawie agent containers. MCP-tool entries are derived
 // at the call site from the registered `mcpServers` map so that any server
 // added via `add_mcp_server` (or wired in container.json directly) is
 // reachable to the agent — without this, the SDK's allowedTools filter
@@ -164,7 +164,7 @@ const preToolUseHook: HookCallback = async (input) => {
   if (SDK_DISALLOWED_TOOLS.includes(toolName)) {
     return {
       decision: 'block',
-      stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
+      stopReason: `Tool '${toolName}' is not available in this environment — use the clawie equivalent.`,
     } as unknown as ReturnType<HookCallback>;
   }
   // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
@@ -221,7 +221,7 @@ function archiveTranscriptFile(transcriptPath: string | undefined, sessionId: st
       ? summary.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50)
       : `conversation-${new Date().getHours().toString().padStart(2, '0')}${new Date().getMinutes().toString().padStart(2, '0')}`;
 
-    const conversationsDir = process.env.NANOCLAW_CONVERSATIONS_DIR || '/workspace/agent/conversations';
+    const conversationsDir = process.env.CLAWIE_CONVERSATIONS_DIR || '/workspace/agent/conversations';
     fs.mkdirSync(conversationsDir, { recursive: true });
     const filename = `${new Date().toISOString().split('T')[0]}-${name}.md`;
     fs.writeFileSync(path.join(conversationsDir, filename), formatTranscriptMarkdown(messages, summary, assistantName));

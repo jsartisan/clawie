@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# ncl — NanoClaw CLI launcher.
+# clawie — Clawie CLI launcher.
 #
 # Resolves the project root from this script's location, cd's there so the
 # host-resolved DATA_DIR matches the running host, and execs the TS entry
-# via tsx. Symlink this file into a directory on your PATH (or alias `ncl`
+# via tsx. Symlink this file into a directory on your PATH (or alias `clawie`
 # to its full path) to invoke from anywhere:
 #
-#   ln -s "$(pwd)/bin/ncl" /usr/local/bin/ncl
+#   ln -s "$(pwd)/bin/clawie" /usr/local/bin/clawie
 #   # or
-#   alias ncl="$(pwd)/bin/ncl"
+#   alias clawie="$(pwd)/bin/clawie"
 
 set -euo pipefail
 

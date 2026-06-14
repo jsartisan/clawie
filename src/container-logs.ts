@@ -65,7 +65,7 @@ export function openContainerLog(sessionId: string, containerName: string): Cont
 
 /**
  * Read the last `maxLines` of a session's container log. Used by
- * `ncl sessions logs` and the portal session page.
+ * `clawie sessions logs` and the portal session page.
  */
 export function readContainerLogTail(sessionId: string, maxLines = 100): string {
   const file = containerLogPath(sessionId);

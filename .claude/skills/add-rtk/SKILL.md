@@ -36,14 +36,14 @@ chmod +x ~/.local/bin/rtk   # if needed
 ## Step 2 — Identify the target agent group
 
 ```bash
-ncl groups list
+clawie groups list
 ```
 
 Note the group ID (e.g. `ag-1776342942165-ptgddd`). Repeat Steps 3–5 for each group.
 
 ## Step 3 — Mount rtk into the container config
 
-`additional_mounts` is a JSON column not exposed via `ncl config update`. Update it directly via the DB helper, merging with any existing mounts.
+`additional_mounts` is a JSON column not exposed via `clawie config update`. Update it directly via the DB helper, merging with any existing mounts.
 
 Read current mounts first:
 
@@ -97,7 +97,7 @@ jq '.hooks.PreToolUse += [{"matcher":"Bash","hooks":[{"type":"command","command"
 ## Step 5 — Restart the container
 
 ```bash
-ncl groups restart --id <group-id>
+clawie groups restart --id <group-id>
 ```
 
 No `--message` needed — the hook is transparent and requires no agent awareness.
@@ -120,7 +120,7 @@ Mount wasn't applied or container wasn't restarted:
 pnpm exec tsx scripts/q.ts data/v2.db \
   "SELECT additional_mounts FROM container_configs WHERE agent_group_id = '<group-id>'"
 # Look for entry with /usr/local/bin/rtk
-ncl groups restart --id <group-id>
+clawie groups restart --id <group-id>
 ```
 
 ### Hook not firing
