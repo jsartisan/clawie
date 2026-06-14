@@ -176,9 +176,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   // DM's platform_id equals the user id and is shared across every bot, so the
   // account is what scopes the chat. Resolved once here and reused for the
   // default-agent auto-wire below.
-  const inboundAccount = event.channelAccount
-    ? getChannelAccount(event.channelType, event.channelAccount)
-    : undefined;
+  const inboundAccount = event.channelAccount ? getChannelAccount(event.channelType, event.channelAccount) : undefined;
 
   // 1. Combined lookup: messaging_group row + count of wired agents in a
   //    single query. Cheap short-circuit for the common "unwired channel"
@@ -565,12 +563,15 @@ async function injectMemoryContext(agentGroupId: string, sessionId: string): Pro
 
   const facts = entries.filter((e) => e.kind === 'fact').map((e) => `- ${e.content}`);
   const prefs = entries.filter((e) => e.kind === 'preference').map((e) => `- ${e.content}`);
-  const skills = entries.filter((e) => e.kind === 'skill_created' || e.kind === 'skill_patched').map((e) => `- ${e.skill_name}: ${e.content}`);
+  const skills = entries
+    .filter((e) => e.kind === 'skill_created' || e.kind === 'skill_patched')
+    .map((e) => `- ${e.skill_name}: ${e.content}`);
 
   const sections: string[] = [];
   if (prefs.length > 0) sections.push(`**User preferences:**\n${prefs.join('\n')}`);
   if (facts.length > 0) sections.push(`**Known facts:**\n${facts.join('\n')}`);
-  if (skills.length > 0) sections.push(`**Learned skills (available in your skills directory):**\n${skills.join('\n')}`);
+  if (skills.length > 0)
+    sections.push(`**Learned skills (available in your skills directory):**\n${skills.join('\n')}`);
 
   const content = `<memory from_prior_sessions="true">\n${sections.join('\n\n')}\n</memory>`;
 

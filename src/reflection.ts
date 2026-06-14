@@ -24,7 +24,8 @@ import { GROUPS_DIR } from './config.js';
 
 const envConfig = readEnvFile(['ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL']);
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || envConfig.ANTHROPIC_API_KEY;
-const ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL || envConfig.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
+const ANTHROPIC_BASE_URL =
+  process.env.ANTHROPIC_BASE_URL || envConfig.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
 
 const REFLECTION_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_CONVERSATION_CHARS = 40_000;
@@ -61,10 +62,7 @@ interface ReflectionResult {
   skills: Array<{ name: string; description: string; content: string }>;
 }
 
-export async function reflectOnSession(
-  agentGroupId: string,
-  sessionId: string,
-): Promise<void> {
+export async function reflectOnSession(agentGroupId: string, sessionId: string): Promise<void> {
   if (!ANTHROPIC_API_KEY) {
     log.debug('Skipping reflection — ANTHROPIC_API_KEY not set');
     return;
@@ -95,10 +93,22 @@ export async function reflectOnSession(
   const entries: Parameters<typeof insertMemoryEntries>[0] = [];
 
   for (const fact of result.facts) {
-    entries.push({ agent_group_id: agentGroupId, session_id: sessionId, kind: 'fact', content: fact, skill_name: null });
+    entries.push({
+      agent_group_id: agentGroupId,
+      session_id: sessionId,
+      kind: 'fact',
+      content: fact,
+      skill_name: null,
+    });
   }
   for (const pref of result.preferences) {
-    entries.push({ agent_group_id: agentGroupId, session_id: sessionId, kind: 'preference', content: pref, skill_name: null });
+    entries.push({
+      agent_group_id: agentGroupId,
+      session_id: sessionId,
+      kind: 'preference',
+      content: pref,
+      skill_name: null,
+    });
   }
 
   let skillsWritten = 0;
@@ -189,27 +199,32 @@ async function callReflectionApi(conversation: string): Promise<ReflectionResult
     throw new Error(`Anthropic API error: ${response.status} ${await response.text()}`);
   }
 
-  const data = await response.json() as { content: Array<{ type: string; text: string }> };
+  const data = (await response.json()) as { content: Array<{ type: string; text: string }> };
   const text = data.content.find((b) => b.type === 'text')?.text ?? '{}';
 
   // Strip markdown code fences if the model wrapped the JSON
-  const cleaned = text.replace(/^```json?\s*/i, '').replace(/\s*```$/, '').trim();
+  const cleaned = text
+    .replace(/^```json?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
   const parsed = JSON.parse(cleaned) as Partial<ReflectionResult>;
 
   return {
     facts: Array.isArray(parsed.facts) ? parsed.facts.filter((f) => typeof f === 'string') : [],
     preferences: Array.isArray(parsed.preferences) ? parsed.preferences.filter((f) => typeof f === 'string') : [],
-    skills: Array.isArray(parsed.skills) ? parsed.skills.filter(
-      (s) => s && typeof s.name === 'string' && typeof s.description === 'string' && typeof s.content === 'string',
-    ) : [],
+    skills: Array.isArray(parsed.skills)
+      ? parsed.skills.filter(
+          (s) => s && typeof s.name === 'string' && typeof s.description === 'string' && typeof s.content === 'string',
+        )
+      : [],
   };
 }
 
-function writeSkillFile(
-  agentFolder: string,
-  skill: { name: string; description: string; content: string },
-): boolean {
-  const name = skill.name.toLowerCase().replace(/[^a-z0-9._-]/g, '-').slice(0, 64);
+function writeSkillFile(agentFolder: string, skill: { name: string; description: string; content: string }): boolean {
+  const name = skill.name
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '-')
+    .slice(0, 64);
   if (!name) return false;
 
   const skillDir = path.join(GROUPS_DIR, agentFolder, 'skills', name);
