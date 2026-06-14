@@ -1,0 +1,54 @@
+version: '3'
+
+# go-task tasks for local development. Install go-task: https://taskfile.dev
+# `task dev` runs the NanoClaw host and the admin web UI together.
+
+tasks:
+  dev:
+    desc: Run the NanoClaw host + admin web UI together (prefixed output, single Ctrl-C)
+    cmds:
+      - node scripts/dev.mjs
+
+  dev:host:
+    desc: Run only the NanoClaw host (Node/tsx)
+    cmds:
+      - pnpm run dev
+
+  dev:ui:
+    desc: Run only the admin web UI dev server (Vite on :4101)
+    dir: web
+    cmds:
+      - bun run dev
+
+  install:
+    desc: Install host (pnpm) and web (bun) dependencies
+    cmds:
+      - pnpm install --frozen-lockfile
+      - task: install:web
+
+  install:web:
+    dir: web
+    cmds:
+      - bun install --frozen-lockfile
+
+  build:
+    desc: Build the host (tsc) and the admin web UI (vite)
+    cmds:
+      - pnpm run build
+      - task: build:web
+
+  build:web:
+    dir: web
+    cmds:
+      - bun run build
+
+  typecheck:
+    desc: Typecheck host and web
+    cmds:
+      - pnpm run typecheck
+      - task: typecheck:web
+
+  typecheck:web:
+    dir: web
+    cmds:
+      - bun run typecheck

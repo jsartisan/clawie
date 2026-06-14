@@ -1,3 +1,5 @@
+import { getPendingApproval } from '../../db/sessions.js';
+import { getResponseHandlers } from '../../response-registry.js';
 import { registerResource } from '../crud.js';
 
 registerResource({
@@ -50,4 +52,39 @@ registerResource({
     { name: 'options_json', type: 'json', description: 'Card button options as JSON array.' },
   ],
   operations: { list: 'open', get: 'open' },
+  customOperations: {
+    respond: {
+      access: 'approval',
+      description:
+        'Resolve a pending approval from the portal — equivalent to tapping a button on the approval card in chat. Use --id <approval-id> --value <approve|reject>.',
+      args: [
+        { name: 'id', type: 'string', description: 'pending_approvals.approval_id', required: true },
+        { name: 'value', type: 'string', description: 'Option value, normally approve or reject.', required: true },
+      ],
+      handler: async (args, ctx) => {
+        if (ctx.caller === 'agent') {
+          // Agents must never resolve their own (or anyone's) approvals.
+          throw new Error('approvals respond is not available from agent containers');
+        }
+        const id = String(args.id);
+        const value = String(args.value);
+        if (!getPendingApproval(id)) throw new Error(`no pending approval: ${id}`);
+
+        // Same dispatch path as a chat button tap: first handler to claim the
+        // response wins (approvals module, OneCLI resolver, etc.).
+        for (const handler of getResponseHandlers()) {
+          const claimed = await handler({
+            questionId: id,
+            value,
+            userId: 'portal:operator',
+            channelType: 'webchat',
+            platformId: 'portal',
+            threadId: null,
+          });
+          if (claimed) return { resolved: id, value };
+        }
+        throw new Error(`no handler claimed approval ${id} — is the approvals module loaded?`);
+      },
+    },
+  },
 });

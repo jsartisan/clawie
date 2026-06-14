@@ -7,5 +7,6 @@
 // self-registration import below.
 
 import './cli.js';
+import './webchat.js';
 import './telegram.js';
 import './slack.js';

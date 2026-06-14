@@ -20,12 +20,16 @@ import {
   TIMEZONE,
 } from './config.js';
 import { materializeContainerJson } from './container-config.js';
+import { openContainerLog } from './container-logs.js';
 import { getContainerConfig } from './db/container-configs.js';
-import { updateContainerConfigScalars, updateContainerConfigJson } from './db/container-configs.js';
+import { updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
+import { toOneCLIIdentifier } from './onecli-identifier.js';
 import { getDb, hasTable } from './db/connection.js';
+import { getMessagingGroup } from './db/messaging-groups.js';
+import { countDueMessages } from './db/session-db.js';
 import { initGroupFilesystem } from './group-init.js';
 import { stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
@@ -42,7 +46,9 @@ import {
   heartbeatPath,
   markContainerRunning,
   markContainerStopped,
+  openInboundDb,
   sessionDir,
+  writeOutboundDirect,
   writeSessionRouting,
 } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
@@ -51,6 +57,20 @@ const onecli = new OneCLI({ url: ONECLI_URL, apiKey: ONECLI_API_KEY });
 
 /** Active containers tracked by session ID. */
 const activeContainers = new Map<string, { process: ChildProcess; containerName: string }>();
+
+/**
+ * Sessions whose container the host is killing on purpose (restart, stale
+ * cleanup, shutdown). Their non-zero exit codes are expected — no user-facing
+ * failure notice should fire.
+ */
+const intentionalKills = new Set<string>();
+
+/**
+ * Last abnormal-exit notice per session. A crash-looping container would
+ * otherwise post an error message on every sweep-triggered respawn.
+ */
+const lastFailureNotice = new Map<string, number>();
+const FAILURE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
 
 /**
  * In-flight wake promises, keyed by session id. Deduplicates concurrent
@@ -112,6 +132,14 @@ async function spawnContainer(session: Session): Promise<void> {
     return;
   }
 
+  // Provision the group's filesystem + container_config row up front.
+  // Idempotent (no-op once a group has spawned). Must run before
+  // materializeContainerJson below, which reads the container_config row and
+  // throws if it's missing — the case for a group created via `ncl groups
+  // create` that has never spawned. buildMounts also calls this, but that's
+  // too late for the materialize step. See container-config.ts.
+  initGroupFilesystem(agentGroup);
+
   // Refresh the destination map and default reply routing so any admin
   // changes take effect on wake. Destinations come from the agent-to-agent
   // module — skip when the module isn't installed (table absent).
@@ -133,9 +161,12 @@ async function spawnContainer(session: Session): Promise<void> {
 
   const mounts = buildMounts(agentGroup, session, containerConfig, contribution);
   const containerName = `nanoclaw-v2-${agentGroup.folder}-${Date.now()}`;
-  // OneCLI agent identifier is always the agent group id — stable across
-  // sessions and reversible via getAgentGroup() for approval routing.
-  const agentIdentifier = agentGroup.id;
+  // OneCLI agent identifier — derived from the agent group id, stable across
+  // sessions. Sanitized to satisfy the gateway's `^[a-z][a-z0-9-]{0,49}$` rule
+  // (raw `randomUUID()` ids from `ncl groups create` can start with a digit and
+  // get a 400). Reversed for approval routing via
+  // getAgentGroupByOneCLIIdentifier().
+  const agentIdentifier = toOneCLIIdentifier(agentGroup.id);
   const args = await buildContainerArgs(
     mounts,
     containerName,
@@ -159,9 +190,14 @@ async function spawnContainer(session: Session): Promise<void> {
   activeContainers.set(session.id, { process: container, containerName });
   markContainerRunning(session.id);
 
-  // Log stderr
+  // Containers run with --rm, so their output is gone once they exit. Tee
+  // stderr to logs/containers/<session-id>.log so failures stay debuggable
+  // (`ncl sessions logs`), in addition to the debug-level host log.
+  const logSink = openContainerLog(session.id, containerName);
   container.stderr?.on('data', (data) => {
-    for (const line of data.toString().trim().split('\n')) {
+    const text = data.toString();
+    logSink.write(text);
+    for (const line of text.trim().split('\n')) {
       if (line) log.debug(line, { container: agentGroup.folder });
     }
   });
@@ -178,21 +214,77 @@ async function spawnContainer(session: Session): Promise<void> {
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
+    logSink.close(`exit code=${code}`);
     log.info('Container exited', { sessionId: session.id, code, containerName });
+
+    const wasIntentional = intentionalKills.delete(session.id);
+    if (!wasIntentional && code !== 0) {
+      notifyAbnormalExit(session);
+    }
   });
 
   container.on('error', (err) => {
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
+    intentionalKills.delete(session.id);
+    logSink.close(`spawn error: ${err.message}`);
     log.error('Container spawn error', { sessionId: session.id, err });
   });
+}
+
+/**
+ * The container died abnormally. If it left user messages unanswered, tell
+ * the chat instead of going silent — the single worst failure mode from the
+ * user's side. Written directly to outbound.db (safe: the container is gone,
+ * single-writer holds); the sweep delivery poll picks it up within ~60s.
+ * Host-sweep will independently retry the pending messages on its next tick.
+ */
+function notifyAbnormalExit(session: Session): void {
+  try {
+    const inDb = openInboundDb(session.agent_group_id, session.id);
+    let due: number;
+    try {
+      due = countDueMessages(inDb);
+    } finally {
+      inDb.close();
+    }
+    if (due === 0) return; // nothing unanswered — silent exit is fine
+
+    const last = lastFailureNotice.get(session.id) ?? 0;
+    if (Date.now() - last < FAILURE_NOTICE_COOLDOWN_MS) return;
+
+    const mg = session.messaging_group_id ? getMessagingGroup(session.messaging_group_id) : null;
+    if (!mg) return; // no chat to notify (agent-shared session without routing)
+
+    writeOutboundDirect(session.agent_group_id, session.id, {
+      id: `errnotice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      platformId: mg.platform_id,
+      channelType: mg.channel_type,
+      threadId: session.thread_id,
+      content: JSON.stringify({
+        text: 'I ran into a problem and had to restart — retrying your last message shortly. If this keeps happening, an admin can check the logs with `ncl sessions logs`.',
+      }),
+    });
+    lastFailureNotice.set(session.id, Date.now());
+    log.warn('Abnormal container exit with pending work — failure notice queued', {
+      sessionId: session.id,
+      dueMessages: due,
+    });
+  } catch (err) {
+    log.warn('Failed to queue abnormal-exit notice', { sessionId: session.id, err });
+  }
 }
 
 /** Kill a container for a session. */
 export function killContainer(sessionId: string, reason: string, onExit?: () => void): void {
   const entry = activeContainers.get(sessionId);
   if (!entry) return;
+
+  // Host-initiated kill — the non-zero exit is expected, suppress the
+  // abnormal-exit user notice.
+  intentionalKills.add(sessionId);
 
   if (onExit) {
     entry.process.once('close', onExit);
@@ -401,7 +493,7 @@ async function buildContainerArgs(
   containerName: string,
   agentGroup: AgentGroup,
   containerConfig: import('./container-config.js').ContainerConfig,
-  provider: string,
+  _provider: string,
   providerContribution: ProviderContainerContribution,
   agentIdentifier?: string,
 ): Promise<string[]> {

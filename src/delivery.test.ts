@@ -32,7 +32,6 @@ import {
   runMigrations,
   createAgentGroup,
   createMessagingGroup,
-  createMessagingGroupAgent,
 } from './db/index.js';
 import { getDeliveredIds } from './db/session-db.js';
 import { resolveSession, outboundDbPath, openInboundDb } from './session-manager.js';

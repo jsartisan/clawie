@@ -134,9 +134,12 @@ describe('messaging groups', () => {
     expect(result!.id).toBe('mg-1');
   });
 
-  it('should enforce unique channel_type + platform_id', () => {
-    createMessagingGroup(mg());
-    expect(() => createMessagingGroup({ ...mg(), id: 'mg-dup' })).toThrow();
+  it('should enforce unique channel_type + platform_id + channel_account', () => {
+    // Identity now includes the bot account (Telegram DM platform_ids collide
+    // across bots). Same triple -> conflict; different account -> allowed.
+    createMessagingGroup({ ...mg(), channel_account: 'a' });
+    expect(() => createMessagingGroup({ ...mg(), id: 'mg-dup', channel_account: 'a' })).toThrow();
+    expect(() => createMessagingGroup({ ...mg(), id: 'mg-other', channel_account: 'b' })).not.toThrow();
   });
 
   it('should update', () => {

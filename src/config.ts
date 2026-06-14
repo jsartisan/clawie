@@ -13,6 +13,8 @@ const envConfig = readEnvFile([
   'ONECLI_API_KEY',
   'TZ',
   'WEBHOOK_PORT',
+  'NCL_PORTAL_PORT',
+  'NCL_ADMIN_PORT',
 ]);
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -48,6 +50,23 @@ export const ONECLI_API_KEY = process.env.ONECLI_API_KEY || envConfig.ONECLI_API
 export const WEBHOOK_PORT = Math.max(
   1,
   parseInt(process.env.WEBHOOK_PORT || envConfig.WEBHOOK_PORT || '3000', 10) || 3000,
+);
+
+// Portal web UI (the user-facing product surface, served by
+// src/cli/http-server.ts). Binds to 127.0.0.1 and requires the bearer token
+// from src/cli/portal-auth.ts. Port defaults to 4100 (the Vite dev server
+// runs on 4101 and proxies /api here). NCL_ADMIN_PORT is the legacy name,
+// kept as a fallback for existing installs.
+export const NCL_PORTAL_PORT = Math.max(
+  1,
+  parseInt(
+    process.env.NCL_PORTAL_PORT ||
+      envConfig.NCL_PORTAL_PORT ||
+      process.env.NCL_ADMIN_PORT ||
+      envConfig.NCL_ADMIN_PORT ||
+      '4100',
+    10,
+  ) || 4100,
 );
 export const MAX_MESSAGES_PER_PROMPT = Math.max(1, parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10);
 export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '1800000', 10); // 30min default — how long to keep container alive after last result

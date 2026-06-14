@@ -40,7 +40,9 @@ export function resetCircuitBreaker(): void {
   try {
     fs.unlinkSync(CB_PATH);
     log.info('Circuit breaker reset on clean shutdown');
-  } catch {}
+  } catch {
+    /* no breaker file — nothing to reset */
+  }
 }
 
 export async function enforceStartupBackoff(): Promise<void> {

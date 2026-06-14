@@ -118,6 +118,49 @@ Socket Mode is an outbound WebSocket, so there is nothing to expose to the
 internet — no `WEBHOOK_PORT`, no ngrok, no reverse proxy, no public URL. This is
 the main difference from the old Chat SDK webhook adapter.
 
+## Multiple apps (one Slack app per agent)
+
+The single `SLACK_BOT_TOKEN`/`SLACK_APP_TOKEN` pair above runs one Slack app. To run several apps — each statically bound to its own agent group (distinct personality and tool access, e.g. a work app that reaches work Grafana and a side-project app that reaches side-project Grafana) — use **channel accounts**. Each account is a Slack app whose tokens are stored encrypted in the DB and whose channels auto-route to a default agent (no "which agent?" prompt).
+
+### 1. Set the master key (one-time)
+
+Channel-account tokens are encrypted at rest with AES-256-GCM. Generate a 32-byte key and add it to `.env`:
+
+```bash
+grep -q '^NANOCLAW_SECRET_KEY=' .env || echo "NANOCLAW_SECRET_KEY=$(openssl rand -base64 32)" >> .env
+```
+
+Keep `.env` private (chmod 600). Losing this key makes stored tokens unrecoverable.
+
+### 2. Create an account per app and bind it to an agent
+
+`account_id` is any short nickname you choose for the app (e.g. `work`, `side`). `default_agent_group_id` is the agent every channel that app sees will route to (find it with `ncl groups list`).
+
+```bash
+# Create the mapping (one per Slack app — each needs its own bot + app token)
+ncl channel-accounts create --channel-type slack --account-id work --default-agent-group-id <agent-group-id>
+
+# Store its tokens (encrypted) — use the channel_accounts.id printed above
+ncl channel-accounts set-secret --id <channel-account-id> --name bot_token --value xoxb-...
+ncl channel-accounts set-secret --id <channel-account-id> --name app_token --value xapp-...
+```
+
+Repeat for each app with its own `account_id` and agent group. Inspect with `ncl channel-accounts list` (tokens are never shown).
+
+### 3. Pick a default account
+
+Chat identity includes the app account. Mark one account as the default — the default app transparently owns any account-less channel (chats created before you added accounts), so nothing needs re-wiring:
+
+```bash
+ncl channel-accounts set-default --id <channel-account-id>
+```
+
+Typically the default is the account that wraps your original (pre-accounts) app.
+
+### 4. Restart
+
+Restart the host so the factory opens one Socket Mode connection per app. As soon as accounts exist, the legacy `SLACK_BOT_TOKEN`/`SLACK_APP_TOKEN` env vars are ignored for Slack, and every Slack channel auto-wires to its app's default agent.
+
 ## Next Steps
 
 If you're in the middle of `/setup`, return to the setup flow now.

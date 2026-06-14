@@ -205,6 +205,15 @@ async function sweepSession(session: Session): Promise<void> {
     const { handleRecurrence } = await import('./modules/scheduling/recurrence.js');
     await handleRecurrence(inDb, session);
     // MODULE-HOOK:scheduling-recurrence:end
+
+    // 6. Post-session reflection: extract memories + learned skills from the
+    // conversation once the container has stopped and left behind messages_out.
+    if (!alive && outDb) {
+      const { reflectOnSession } = await import('./reflection.js');
+      await reflectOnSession(session.agent_group_id, session.id).catch((err) =>
+        log.warn('Reflection failed', { sessionId: session.id, err }),
+      );
+    }
   } finally {
     inDb.close();
     outDb?.close();

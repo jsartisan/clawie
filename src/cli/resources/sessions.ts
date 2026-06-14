@@ -1,3 +1,5 @@
+import { readContainerLogTail } from '../../container-logs.js';
+import { getSession } from '../../db/sessions.js';
 import { registerResource } from '../crud.js';
 
 registerResource({
@@ -43,4 +45,31 @@ registerResource({
     { name: 'created_at', type: 'string', description: 'Auto-set.', generated: true },
   ],
   operations: { list: 'open', get: 'open' },
+  customOperations: {
+    logs: {
+      access: 'open',
+      description:
+        'Tail the persisted container log for a session (containers run with --rm, so this is the only post-exit record). Use --id <session-id> [--lines <n>, default 100].',
+      args: [
+        { name: 'id', type: 'string', description: 'sessions.id', required: true },
+        { name: 'lines', type: 'number', description: 'Number of trailing lines to return (default 100).' },
+      ],
+      handler: async (args, ctx) => {
+        const id = args.id as string;
+        if (!id) throw new Error('session id is required');
+        // Group-scope enforcement: custom ops bypass the generic post-handler
+        // filter, so check ownership here. "not found" either way — no
+        // cross-group existence oracle.
+        if (ctx.caller === 'agent') {
+          const session = getSession(id);
+          if (!session || session.agent_group_id !== ctx.agentGroupId) {
+            throw new Error(`session not found: ${id}`);
+          }
+        }
+        const lines = args.lines !== undefined ? Math.max(1, Number(args.lines)) : 100;
+        const tail = readContainerLogTail(id, lines);
+        return tail || '(no container log for this session yet)';
+      },
+    },
+  },
 });

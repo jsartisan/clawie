@@ -38,11 +38,16 @@ CREATE TABLE messaging_groups (
   is_group              INTEGER DEFAULT 0,
   unknown_sender_policy TEXT NOT NULL DEFAULT 'strict',
   created_at            TEXT NOT NULL,
-  UNIQUE(channel_type, platform_id)
+  denied_at             TEXT,
+  channel_account       TEXT,                  -- which bot/app instance owns this chat (NULL = legacy/default)
+  UNIQUE(channel_type, platform_id, channel_account)
 );
 ```
 
 - `unknown_sender_policy`: `strict` (drop), `request_approval` (ask admin), `public` (allow).
+- `denied_at`: set when an owner declines a channel-registration request; a non-NULL value silently drops future messages (see `src/router.ts`).
+- `channel_account`: links the chat to a specific `channel_accounts.account_id` (the bot/app it arrived through). `NULL` means a legacy/account-less chat, transparently owned by the channel's default account.
+- **Why `channel_account` is in the unique key (migration 017).** A Telegram private chat's `platform_id` is `telegram:<userId>` — the *same* value for every bot that user DMs. Without the account in the key, two bots' DMs with the same user would collide on one row. Identity is therefore `(channel_type, platform_id, channel_account)`. See [§1.16 `channel_accounts`](#116-channel_accounts).
 - **Readers:** `src/router.ts`, `src/delivery.ts`, `src/session-manager.ts`
 - **Writers:** `src/db/messaging-groups.ts`, channel setup flows
 
@@ -320,28 +325,77 @@ CREATE TABLE container_configs (
 - **Readers:** `src/container-config.ts`, `src/container-runner.ts`, `src/cli/dispatch.ts` (scope enforcement), `src/claude-md-compose.ts`
 - **Writers:** `src/db/container-configs.ts`, `src/modules/self-mod/apply.ts`
 
+### 1.16 `channel_accounts`
+
+One row per bot/app instance on a channel — the basis for running **multiple bots on one channel** (e.g. a `work` and a `personal` Telegram bot). The non-secret mapping only: which bot exists and which agent its chats route to. Tokens live in `channel_account_secrets` (§1.17), never here.
+
+```sql
+CREATE TABLE channel_accounts (
+  id                     TEXT PRIMARY KEY,
+  channel_type           TEXT NOT NULL,        -- 'telegram', 'slack', …
+  account_id             TEXT NOT NULL,        -- operator's nickname for the bot ('work', 'side')
+  default_agent_group_id TEXT,                 -- chats this bot sees auto-wire here
+  is_default             INTEGER NOT NULL DEFAULT 0,
+  created_at             TEXT NOT NULL,
+  UNIQUE (channel_type, account_id)
+);
+```
+
+- `default_agent_group_id`: when a message arrives through this account on an unwired chat, the router auto-wires the chat to this agent — no "which agent?" escalation (`src/router.ts`).
+- `is_default`: the account that transparently owns legacy `channel_account IS NULL` chats, so an existing single-bot install can adopt accounts with **no data backfill**. At most one default per channel type — `setDefaultChannelAccount()` clears siblings atomically.
+- **Boot behavior:** the channel adapter factory reads all accounts for its type and spins up **one polling connection per account** (`src/channels/telegram.ts`). With zero accounts, it falls back to the legacy single-bot env var (e.g. `TELEGRAM_BOT_TOKEN`).
+- **Readers:** `src/channels/*` (adapter factories), `src/router.ts` (default-agent auto-wire), `src/index.ts` (delivery account resolution)
+- **Writers:** `src/db/channel-accounts.ts`, the `channel-accounts` CLI/web resource
+
+### 1.17 `channel_account_secrets`
+
+Per-account credentials (bot tokens, app tokens), **encrypted at rest** with AES-256-GCM. Split from `channel_accounts` so the mapping stays safe to `list`/query while secrets never appear in plaintext anywhere — not in `ncl ... list`, not in DB backups, not via `q.ts`.
+
+```sql
+CREATE TABLE channel_account_secrets (
+  channel_account_id TEXT NOT NULL,
+  name               TEXT NOT NULL,            -- token key: 'bot_token' | 'app_token'
+  value_encrypted    TEXT NOT NULL,            -- base64(iv | authTag | ciphertext)
+  created_at         TEXT NOT NULL,
+  PRIMARY KEY (channel_account_id, name)
+);
+```
+
+- **Encryption:** `src/crypto/secrets.ts`. A single 32-byte master key lives in `.env` as `NANOCLAW_SECRET_KEY` (base64). Each value is self-describing — `base64(iv[12] | authTag[16] | ciphertext)` — so a fresh random IV and the GCM auth tag travel with the row.
+- **Threat model:** this protects *DB-only* exposure (a copied `data/v2.db`, backups, list output). It does **not** protect a host holding both `.env` and the DB, since the key is in `.env`. Keep `.env` at `chmod 600` (it is gitignored).
+- The master key is read via `readEnvFile` (not `process.env`) so it never leaks into spawned container environments — the same discipline used for channel tokens.
+- **Readers/writers:** `src/db/channel-accounts.ts` (`getAccountSecrets`, `setAccountSecret`).
+
 ---
 
 ## 2. Migration system
 
-Migrations live in `src/db/migrations/`, one file per migration. Runner: `runMigrations()` in `src/db/migrations/index.ts`. It:
+Migrations live in `src/db/migrations/`, one file per migration, collected into an ordered array in `src/db/migrations/index.ts`. Runner: `runMigrations()`. It:
 
-1. Creates `schema_version` if absent.
-2. Reads `MAX(version)` — call it `current`.
-3. For each migration with `version > current`, executes `up(db)` inside a transaction and appends a `schema_version` row.
+1. Creates `schema_version` (with a `UNIQUE` index on `name`) if absent.
+2. Reads the set of already-applied migration **names**.
+3. For each migration whose `name` is not yet applied, executes `up(db)` inside a transaction and appends a `schema_version` row, stamping `version` as an auto-incremented applied-order number.
 
-| # | File | Introduces |
-|---|------|------------|
-| 001 | `001-initial.ts` | Core tables: `agent_groups`, `messaging_groups`, `messaging_group_agents`, `users`, `user_roles`, `agent_group_members`, `user_dms`, `sessions`, `pending_questions` |
-| 002 | `002-chat-sdk-state.ts` | `chat_sdk_kv`, `chat_sdk_subscriptions`, `chat_sdk_locks`, `chat_sdk_lists` |
-| 003 | `003-pending-approvals.ts` | `pending_approvals` (session-bound + OneCLI fields) |
-| 004 | `004-agent-destinations.ts` | `agent_destinations` + backfill from existing `messaging_group_agents` wirings |
-| 007 | `007-pending-approvals-title-options.ts` | `ALTER TABLE pending_approvals` add `title`, `options_json` (retrofits DBs created between 003 and 007) |
-| 008 | `008-dropped-messages.ts` | `unregistered_senders` |
-| 009 | `009-drop-pending-credentials.ts` | Drop the defunct `pending_credentials` table |
-| 014 | `014-container-configs.ts` | `container_configs` — per-agent-group container runtime config |
-| 015 | `015-cli-scope.ts` | `ALTER TABLE container_configs ADD COLUMN cli_scope` |
+**Keyed by `name`, not `version`.** This is the part that changed once channel/provider install skills began shipping their own migrations. A module migration (e.g. `module-agent-to-agent-destinations`, `module-approvals-pending-approvals`) can pick any `version` number without coordinating with core — the `version` field is just an ordering hint within the array, while the stored `version` column records *applied order*. Uniqueness on `name` is what prevents double-application. So the table below lists migrations by name/intent rather than as a strict version sequence.
 
-Numbers 005 and 006 are intentionally absent — migrations were renumbered during early development.
+| File / name | Introduces |
+|-------------|------------|
+| `001-initial.ts` | Core tables: `agent_groups`, `messaging_groups`, `messaging_group_agents`, `users`, `user_roles`, `agent_group_members`, `user_dms`, `sessions`, `pending_questions` |
+| `002-chat-sdk-state.ts` | `chat_sdk_kv`, `chat_sdk_subscriptions`, `chat_sdk_locks`, `chat_sdk_lists` |
+| `module-approvals-pending-approvals` | `pending_approvals` (session-bound + OneCLI fields) — module migration |
+| `module-agent-to-agent-destinations` | `agent_destinations` + backfill from existing wirings — module migration |
+| `module-approvals-title-options` | `ALTER TABLE pending_approvals` add `title`, `options_json` — module migration |
+| `008-dropped-messages.ts` | `unregistered_senders` |
+| `009-drop-pending-credentials.ts` | Drop the defunct `pending_credentials` table |
+| `010-engage-modes.ts` | Engage-mode columns on `messaging_group_agents` |
+| `011-pending-sender-approvals.ts` | Pending unknown-sender approvals |
+| `012-channel-registration.ts` | Channel-registration approval flow + `messaging_groups.denied_at` |
+| `013-approval-render-metadata.ts` | Approval card render metadata |
+| `014-container-configs.ts` | `container_configs` — per-agent-group container runtime config |
+| `015-cli-scope.ts` | `ALTER TABLE container_configs ADD COLUMN cli_scope` |
+| `016-channel-accounts.ts` | `channel_accounts` + `channel_account_secrets`; adds `messaging_groups.channel_account` |
+| `017-channel-account-routing-fix.ts` | `channel_accounts.is_default`; widens `messaging_groups` unique key to include `channel_account` (table rebuild — runs with `disableForeignKeys`) |
+
+The numeric prefixes are a loose ordering convention, not a contiguous sequence — early gaps (e.g. 005/006) come from renumbering, and module migrations carry names instead. Treat the list above as authoritative over any single number.
 
 Session DB schemas (`INBOUND_SCHEMA`, `OUTBOUND_SCHEMA`) are **not** versioned here. They're `CREATE TABLE IF NOT EXISTS` so new columns land via the session-DB lazy migration helpers (`migrateDeliveredTable()` etc.) when a session file from an older build is reopened. See [db-session.md](db-session.md).

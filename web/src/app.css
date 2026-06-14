@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/* Vendored UI primitives' design system (theme tokens, utilities,
+   react-aria plugin, animations). globals.css @source-scans src/ui; the
+   line below adds the app's own files so their classes aren't purged. */
+@import './ui/styles/globals.css';
+@source './';
+
+/* The Modal primitive positions its overlay against these viewport vars
+   (the host app normally provides them). Default them to the full viewport. */
+:root {
+  --page-height: 100dvh;
+  --visual-viewport-height: 100dvh;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}

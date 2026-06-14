@@ -5,6 +5,7 @@
 import './groups.js';
 import './messaging-groups.js';
 import './wirings.js';
+import './channel-accounts.js';
 import './users.js';
 import './roles.js';
 import './members.js';

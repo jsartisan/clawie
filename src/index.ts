@@ -10,6 +10,8 @@ import { DATA_DIR } from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
 import { initDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
+import { getMessagingGroupByPlatform } from './db/messaging-groups.js';
+import { getDefaultChannelAccount } from './db/channel-accounts.js';
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
@@ -57,6 +59,7 @@ import './modules/index.js';
 import './cli/commands/index.js';
 import './cli/delivery-action.js';
 import { startCliServer, stopCliServer } from './cli/socket-server.js';
+import { startPortalServer, stopPortalServer } from './cli/http-server.js';
 
 import type { ChannelAdapter, ChannelSetup } from './channels/adapter.js';
 import { initChannelAdapters, teardownChannelAdapters, getChannelAdapter } from './channels/channel-registry.js';
@@ -83,6 +86,7 @@ async function main(): Promise<void> {
       onInbound(platformId, threadId, message) {
         routeInbound({
           channelType: adapter.channelType,
+          channelAccount: adapter.accountId,
           platformId,
           threadId,
           message: {
@@ -133,6 +137,20 @@ async function main(): Promise<void> {
   });
 
   // 4. Delivery adapter bridge — dispatches to channel adapters
+  // Resolve which bot/app instance should handle a chat. Preference: the
+  // explicit account from the caller (session delivery), else the chat's own
+  // messaging group, else the channel's default account. A NULL/legacy account
+  // maps to the default bot so account-less chats deliver deterministically
+  // (not by adapter insertion order).
+  const resolveAccount = (
+    channelType: string,
+    platformId: string,
+    explicitAccount?: string | null,
+  ): string | undefined => {
+    const account = explicitAccount ?? getMessagingGroupByPlatform(channelType, platformId)?.channel_account;
+    return account ?? getDefaultChannelAccount(channelType)?.account_id;
+  };
+
   const deliveryAdapter = {
     async deliver(
       channelType: string,
@@ -141,16 +159,22 @@ async function main(): Promise<void> {
       kind: string,
       content: string,
       files?: import('./channels/adapter.js').OutboundFile[],
+      channelAccount?: string | null,
     ): Promise<string | undefined> {
-      const adapter = getChannelAdapter(channelType);
+      const adapter = getChannelAdapter(channelType, resolveAccount(channelType, platformId, channelAccount));
       if (!adapter) {
         log.warn('No adapter for channel type', { channelType });
         return;
       }
       return adapter.deliver(platformId, threadId, { kind, content: JSON.parse(content), files });
     },
-    async setTyping(channelType: string, platformId: string, threadId: string | null): Promise<void> {
-      const adapter = getChannelAdapter(channelType);
+    async setTyping(
+      channelType: string,
+      platformId: string,
+      threadId: string | null,
+      channelAccount?: string | null,
+    ): Promise<void> {
+      const adapter = getChannelAdapter(channelType, resolveAccount(channelType, platformId, channelAccount));
       await adapter?.setTyping?.(platformId, threadId);
     },
   };
@@ -168,6 +192,9 @@ async function main(): Promise<void> {
   // 7. Start the `ncl` CLI socket server (data/ncl.sock).
   await startCliServer();
 
+  // 8. Start the portal server (loopback, token-authenticated, :4100).
+  await startPortalServer();
+
   log.info('NanoClaw running');
 }
 
@@ -184,6 +211,7 @@ async function shutdown(signal: string): Promise<void> {
   stopDeliveryPolls();
   stopHostSweep();
   await stopCliServer();
+  await stopPortalServer();
   try {
     await teardownChannelAdapters();
   } finally {

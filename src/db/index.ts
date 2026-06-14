@@ -4,6 +4,7 @@ export {
   createAgentGroup,
   getAgentGroup,
   getAgentGroupByFolder,
+  getAgentGroupByOneCLIIdentifier,
   getAllAgentGroups,
   updateAgentGroup,
   deleteAgentGroup,
@@ -12,6 +13,8 @@ export {
   createMessagingGroup,
   getMessagingGroup,
   getMessagingGroupByPlatform,
+  getMessagingGroupByPlatformAndAccount,
+  getMessagingGroupWithAgentCount,
   getAllMessagingGroups,
   getMessagingGroupsByChannel,
   updateMessagingGroup,
@@ -42,6 +45,13 @@ export {
   deletePendingApproval,
   getPendingApprovalsByAction,
 } from './sessions.js';
+export {
+  insertMemoryEntry,
+  insertMemoryEntries,
+  getRecentMemoryEntries,
+  hasReflectionLog,
+  insertReflectionLog,
+} from './memory.js';
 export {
   getContainerConfig,
   getAllContainerConfigs,

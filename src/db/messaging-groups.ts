@@ -21,10 +21,12 @@ import { getDb, hasTable } from './connection.js';
 export function createMessagingGroup(group: MessagingGroup): void {
   getDb()
     .prepare(
-      `INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at)
-       VALUES (@id, @channel_type, @platform_id, @name, @is_group, @unknown_sender_policy, @created_at)`,
+      `INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, channel_account, created_at)
+       VALUES (@id, @channel_type, @platform_id, @name, @is_group, @unknown_sender_policy, @channel_account, @created_at)`,
     )
-    .run(group);
+    // channel_account is optional on the type; coerce to null so the named
+    // param is always bindable (better-sqlite3 rejects undefined and missing).
+    .run({ ...group, channel_account: group.channel_account ?? null });
 }
 
 export function getMessagingGroup(id: string): MessagingGroup | undefined {
@@ -38,6 +40,28 @@ export function getMessagingGroupByPlatform(channelType: string, platformId: str
 }
 
 /**
+ * Account-scoped variant. A chat's identity is (channel_type, platform_id,
+ * channel_account) — needed wherever a platform_id can be shared across bots
+ * (e.g. Telegram DMs, where it equals the user id). Pass `null` to match
+ * legacy account-less rows.
+ */
+export function getMessagingGroupByPlatformAndAccount(
+  channelType: string,
+  platformId: string,
+  channelAccount: string | null,
+): MessagingGroup | undefined {
+  const db = getDb();
+  if (channelAccount === null) {
+    return db
+      .prepare('SELECT * FROM messaging_groups WHERE channel_type = ? AND platform_id = ? AND channel_account IS NULL')
+      .get(channelType, platformId) as MessagingGroup | undefined;
+  }
+  return db
+    .prepare('SELECT * FROM messaging_groups WHERE channel_type = ? AND platform_id = ? AND channel_account = ?')
+    .get(channelType, platformId, channelAccount) as MessagingGroup | undefined;
+}
+
+/**
  * Combined lookup for the router's fast-drop path. Returns the messaging
  * group (if it exists) and a count of wired agents in one query — lets
  * `routeInbound` short-circuit messages for unwired / unknown channels
@@ -46,23 +70,57 @@ export function getMessagingGroupByPlatform(channelType: string, platformId: str
  *
  * Returns `null` when no messaging_groups row exists for this channel.
  * Returns `{ mg, agentCount: 0 }` when the row exists but has no wired
- * agents. Uses the `UNIQUE(channel_type, platform_id)` index plus the
- * `UNIQUE(messaging_group_id, agent_group_id)` index for the JOIN — both
- * covered by existing SQLite auto-indexes from the UNIQUE constraints.
+ * agents. Uses the `UNIQUE(channel_type, platform_id, channel_account)` index
+ * (widened by migration 017) plus the `UNIQUE(messaging_group_id,
+ * agent_group_id)` index for the JOIN — both covered by existing SQLite
+ * auto-indexes from the UNIQUE constraints.
  */
 export function getMessagingGroupWithAgentCount(
   channelType: string,
   platformId: string,
+  opts?: {
+    /**
+     * The bot account this inbound message arrived through. A Telegram DM's
+     * platform_id equals the user id and is shared across every bot, so the
+     * account is what disambiguates one chat from another.
+     */
+    channelAccount?: string;
+    /**
+     * When the inbound account is the channel's default, also match legacy
+     * rows with `channel_account IS NULL` (chats created before accounts
+     * existed) so the default bot keeps owning them without a backfill.
+     */
+    includeNullAccount?: boolean;
+  },
 ): { mg: MessagingGroup; agentCount: number } | null {
-  const row = getDb()
-    .prepare(
-      `SELECT mg.*, COUNT(mga.id) AS agent_count
+  const db = getDb();
+  const select = `SELECT mg.*, COUNT(mga.id) AS agent_count
          FROM messaging_groups mg
-    LEFT JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id
+    LEFT JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id`;
+
+  let row: (MessagingGroup & { agent_count: number }) | undefined;
+  if (opts?.channelAccount !== undefined) {
+    // Account-scoped lookup. Prefer an exact account match; only fall back to a
+    // NULL-account legacy row when this account is the channel default. The
+    // ORDER BY ensures the exact-account row wins if both somehow exist.
+    row = db
+      .prepare(
+        `${select}
         WHERE mg.channel_type = ? AND mg.platform_id = ?
-     GROUP BY mg.id`,
-    )
-    .get(channelType, platformId) as (MessagingGroup & { agent_count: number }) | undefined;
+          AND (mg.channel_account = ? OR (? = 1 AND mg.channel_account IS NULL))
+     GROUP BY mg.id
+     ORDER BY (mg.channel_account = ?) DESC
+        LIMIT 1`,
+      )
+      .get(channelType, platformId, opts.channelAccount, opts.includeNullAccount ? 1 : 0, opts.channelAccount) as
+      | (MessagingGroup & { agent_count: number })
+      | undefined;
+  } else {
+    // Legacy single-bot install (no accounts): identity is (type, platform_id).
+    row = db
+      .prepare(`${select} WHERE mg.channel_type = ? AND mg.platform_id = ? GROUP BY mg.id`)
+      .get(channelType, platformId) as (MessagingGroup & { agent_count: number }) | undefined;
+  }
   if (!row) return null;
   const { agent_count, ...mg } = row;
   return { mg: mg as MessagingGroup, agentCount: agent_count };

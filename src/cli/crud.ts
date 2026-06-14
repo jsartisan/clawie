@@ -53,6 +53,14 @@ export interface ResourceDef {
   /** Primary key column name. */
   idColumn: string;
   /**
+   * Generator for the `idColumn` value on create. Defaults to `randomUUID()`.
+   * Override when a resource's id must follow a specific shape — e.g.
+   * `agent_groups` ids double as OneCLI agent identifiers (`^[a-z]…`) and use
+   * the codebase's `ag-<ts>-<rand>` convention to match the non-CLI creation
+   * paths (agent-to-agent/create-agent.ts, channel-approval.ts).
+   */
+  generateId?: () => string;
+  /**
    * Column that carries the agent group ID for group-scope enforcement.
    * Required on every resource in the CLI whitelist (groups, sessions,
    * destinations, members). When absent, post-handler filtering fails closed.
@@ -83,6 +91,54 @@ export function getResources(): ResourceDef[] {
 
 export function getResource(plural: string): ResourceDef | undefined {
   return resources.get(plural);
+}
+
+// ---------------------------------------------------------------------------
+// Serializable schema (for the admin web UI)
+// ---------------------------------------------------------------------------
+
+/** A JSON-safe view of a custom operation — the `handler` fn is dropped. */
+export interface CustomOperationSchema {
+  name: string;
+  access: Access;
+  description: string;
+  args: ColumnDef[];
+}
+
+/** A JSON-safe view of a resource definition (no functions). */
+export interface ResourceSchema {
+  name: string;
+  plural: string;
+  description: string;
+  idColumn: string;
+  scopeField?: string;
+  columns: ColumnDef[];
+  operations: ResourceDef['operations'];
+  customOperations: CustomOperationSchema[];
+}
+
+/**
+ * Returns every registered resource as a plain, JSON-serializable schema.
+ * The admin web UI fetches this to render its sidebar and to build
+ * create/edit forms from the column metadata. Custom-operation `handler`
+ * functions are stripped — only their declarative shape is exposed.
+ */
+export function getResourceSchema(): ResourceSchema[] {
+  return getResources().map((def) => ({
+    name: def.name,
+    plural: def.plural,
+    description: def.description,
+    idColumn: def.idColumn,
+    scopeField: def.scopeField,
+    columns: def.columns,
+    operations: def.operations,
+    customOperations: Object.entries(def.customOperations ?? {}).map(([name, op]) => ({
+      name,
+      access: op.access,
+      description: op.description,
+      args: op.args ?? [],
+    })),
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +189,7 @@ function genericCreate(def: ResourceDef) {
     for (const col of def.columns) {
       if (col.generated) {
         if (col.name === def.idColumn) {
-          values[col.name] = randomUUID();
+          values[col.name] = def.generateId ? def.generateId() : randomUUID();
         } else if (col.name.endsWith('_at')) {
           values[col.name] = new Date().toISOString();
         }

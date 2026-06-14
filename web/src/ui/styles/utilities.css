@@ -1,0 +1,20 @@
+@utility box-trim {
+  text-box: trim-both cap alphabetic;
+}
+
+@utility border-shadow {
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+@utility border-overlay {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
+
+.dark .border-overlay {
+  outline-color: rgba(255, 255, 255, 0.1);
+}
+
+@utility rounded-inherit {
+  border-radius: inherit;
+}

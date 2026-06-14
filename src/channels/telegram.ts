@@ -7,13 +7,18 @@ import { createTelegramAdapter } from '@chat-adapter/telegram';
 
 import { readEnvFile } from '../env.js';
 import { log } from '../log.js';
-import { createMessagingGroup, getMessagingGroupByPlatform, updateMessagingGroup } from '../db/messaging-groups.js';
+import { getChannelAccounts, getAccountSecrets } from '../db/channel-accounts.js';
+import {
+  createMessagingGroup,
+  getMessagingGroupByPlatformAndAccount,
+  updateMessagingGroup,
+} from '../db/messaging-groups.js';
 import { grantRole, hasAnyOwner } from '../modules/permissions/db/user-roles.js';
 import { upsertUser } from '../modules/permissions/db/users.js';
 import { createChatSdkBridge, type ReplyContext } from './chat-sdk-bridge.js';
 import { sanitizeTelegramLegacyMarkdown } from './telegram-markdown-sanitize.js';
 import { registerChannelAdapter } from './channel-registry.js';
-import type { ChannelAdapter, ChannelSetup, InboundMessage } from './adapter.js';
+import type { ChannelAdapter, ChannelSetup, InboundMessage, SecretValidation } from './adapter.js';
 import { tryConsume } from './telegram-pairing.js';
 
 /**
@@ -114,6 +119,7 @@ function createPairingInterceptor(
   botUsernamePromise: Promise<string | null>,
   hostOnInbound: ChannelSetup['onInbound'],
   token: string,
+  accountId?: string,
 ): ChannelSetup['onInbound'] {
   return async (platformId, threadId, message) => {
     try {
@@ -142,7 +148,7 @@ function createPairingInterceptor(
       // code-bearing message never reaches an agent. Privilege is now a
       // property of the paired user, not the chat: upsert the user, and if
       // this instance has no owner yet, promote them to owner.
-      const existing = getMessagingGroupByPlatform('telegram', platformId);
+      const existing = getMessagingGroupByPlatformAndAccount('telegram', platformId, accountId ?? null);
       if (existing) {
         updateMessagingGroup(existing.id, {
           is_group: consumed.consumed!.isGroup ? 1 : 0,
@@ -155,6 +161,7 @@ function createPairingInterceptor(
           name: consumed.consumed!.name,
           is_group: consumed.consumed!.isGroup ? 1 : 0,
           unknown_sender_policy: 'strict',
+          channel_account: accountId ?? null,
           created_at: new Date().toISOString(),
         });
       }
@@ -195,51 +202,93 @@ function createPairingInterceptor(
   };
 }
 
+/**
+ * Build a single Telegram adapter for one bot token. Each account gets its own
+ * polling connection, bot-username lookup, and pairing interceptor.
+ */
+function buildTelegramAdapter(token: string, accountId?: string): ChannelAdapter {
+  const telegramAdapter = createTelegramAdapter({
+    botToken: token,
+    mode: 'polling',
+  });
+  const bridge = createChatSdkBridge({
+    adapter: telegramAdapter,
+    concurrency: 'concurrent',
+    extractReplyContext,
+    supportsThreads: false,
+    transformOutboundText: sanitizeTelegramLegacyMarkdown,
+    maxTextLength: 4000,
+  });
+
+  const botUsernamePromise = fetchBotUsername(token);
+
+  const wrapped: ChannelAdapter = {
+    ...bridge,
+    accountId,
+    resolveChannelName: async (platformId: string) => {
+      const chatId = platformId.split(':').slice(1).join(':');
+      if (!chatId) return null;
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/getChat`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId }),
+        });
+        const data = (await res.json()) as { ok?: boolean; result?: { title?: string } };
+        return data.ok ? (data.result?.title ?? null) : null;
+      } catch {
+        return null;
+      }
+    },
+    async setup(hostConfig: ChannelSetup) {
+      const intercepted: ChannelSetup = {
+        ...hostConfig,
+        onInbound: createPairingInterceptor(botUsernamePromise, hostConfig.onInbound, token, accountId),
+      };
+      return withRetry(() => bridge.setup(intercepted), 'bridge.setup');
+    },
+  };
+  return wrapped;
+}
+
+/**
+ * Validate a Telegram bot token via getMe. Network failures fail closed —
+ * better to make the operator retry than to store a token nobody checked.
+ */
+async function validateTelegramSecret(name: string, value: string): Promise<SecretValidation> {
+  if (name !== 'bot_token') return { ok: false, reason: `telegram has no "${name}" secret — only bot_token` };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${value}/getMe`);
+    const json = (await res.json()) as { ok: boolean; result?: { username?: string }; description?: string };
+    if (!json.ok) return { ok: false, reason: json.description ?? 'Telegram rejected this token' };
+    return { ok: true, identity: json.result?.username ? `@${json.result.username}` : undefined };
+  } catch {
+    return { ok: false, reason: 'could not reach api.telegram.org to validate the token' };
+  }
+}
+
 registerChannelAdapter('telegram', {
+  validateSecret: validateTelegramSecret,
   factory: () => {
-    const env = readEnvFile(['TELEGRAM_BOT_TOKEN']);
-    if (!env.TELEGRAM_BOT_TOKEN) return null;
-    const token = env.TELEGRAM_BOT_TOKEN;
-    const telegramAdapter = createTelegramAdapter({
-      botToken: token,
-      mode: 'polling',
-    });
-    const bridge = createChatSdkBridge({
-      adapter: telegramAdapter,
-      concurrency: 'concurrent',
-      extractReplyContext,
-      supportsThreads: false,
-      transformOutboundText: sanitizeTelegramLegacyMarkdown,
-      maxTextLength: 4000,
-    });
+    const accounts = getChannelAccounts('telegram');
 
-    const botUsernamePromise = fetchBotUsername(token);
+    // Legacy single-bot fallback: no channel_accounts rows -> use TELEGRAM_BOT_TOKEN.
+    if (accounts.length === 0) {
+      const env = readEnvFile(['TELEGRAM_BOT_TOKEN']);
+      if (!env.TELEGRAM_BOT_TOKEN) return null;
+      return buildTelegramAdapter(env.TELEGRAM_BOT_TOKEN);
+    }
 
-    const wrapped: ChannelAdapter = {
-      ...bridge,
-      resolveChannelName: async (platformId: string) => {
-        const chatId = platformId.split(':').slice(1).join(':');
-        if (!chatId) return null;
-        try {
-          const res = await fetch(`https://api.telegram.org/bot${token}/getChat`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ chat_id: chatId }),
-          });
-          const data = (await res.json()) as { ok?: boolean; result?: { title?: string } };
-          return data.ok ? (data.result?.title ?? null) : null;
-        } catch {
-          return null;
-        }
-      },
-      async setup(hostConfig: ChannelSetup) {
-        const intercepted: ChannelSetup = {
-          ...hostConfig,
-          onInbound: createPairingInterceptor(botUsernamePromise, hostConfig.onInbound, token),
-        };
-        return withRetry(() => bridge.setup(intercepted), 'bridge.setup');
-      },
-    };
-    return wrapped;
+    // Multi-account: one adapter per bot, tokens decrypted from the DB.
+    const adapters: ChannelAdapter[] = [];
+    for (const account of accounts) {
+      const secrets = getAccountSecrets(account.id);
+      if (!secrets.bot_token) {
+        log.warn('Telegram account missing bot_token, skipping', { accountId: account.account_id });
+        continue;
+      }
+      adapters.push(buildTelegramAdapter(secrets.bot_token, account.account_id));
+    }
+    return adapters;
   },
 });

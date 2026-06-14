@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/nanoclaw-logo.png" alt="NanoClaw" width="400">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/nanoclaw-wordmark-dark.svg">
+    <img src="assets/brand/nanoclaw-wordmark.svg" alt="NanoClaw" width="296">
+  </picture>
 </p>
 
 <p align="center">
@@ -75,6 +78,26 @@ From a channel you own or administer, you can manage groups and tasks:
 @Andy pause the Monday briefing task
 @Andy join the Family Chat group
 ```
+
+## Web Portal
+
+An optional web portal makes NanoClaw feel like a product instead of a CLI: sign in with email + password (created on first visit), create agents with a personality wizard, chat with them in the browser, connect Telegram/Slack bots with live token validation, enable integrations (web search, GitHub, docs…) per agent, and resolve approvals and scheduled routines from an inbox. Power-user resource tables (wirings, messaging groups, …) stay available under the sidebar's "Advanced" section.
+
+It lives in `web/` as a separate [TanStack Router](https://tanstack.com/router) SPA (its own Bun package tree, like `container/agent-runner/`). The host exposes a JSON API over a loopback-only HTTP server (`127.0.0.1:4100`). Browser sessions use httpOnly cookies; scripts can still use the `NCL_PORTAL_TOKEN` bearer token generated into `.env`. Don't expose the port off your machine.
+
+Run the host and the UI dev server together with [go-task](https://taskfile.dev):
+
+```bash
+task dev   # NanoClaw host (:4100 portal API) + Vite UI dev server (:4101)
+```
+
+Then open `http://localhost:4101` and create your account. For a production build, run `task build` — the host serves the built SPA from `web/dist` on `:4100` directly. The portal port is configurable via `NCL_PORTAL_PORT` in `.env` (default 4100).
+
+## Multi-Tenancy (workspaces)
+
+One NanoClaw instance can host many users. Portal signup is open: the first account becomes the **operator** (sees everything, keeps the Advanced resource pages and `ncl workspaces` tooling), and every later signup gets its own isolated **workspace** — its own agents, channel connections, chats, approvals, and routines, invisible to other workspaces. Agent containers were already isolated per agent; workspaces add the data boundary on top, enforced server-side in the dispatch layer (cross-workspace lookups answer "not found").
+
+The operator can meter tenants with `ncl workspaces usage` — per-workspace counts of accounts, agents, connected bots, sessions, and pending approvals.
 
 ## Customizing
 

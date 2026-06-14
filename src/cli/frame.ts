@@ -37,6 +37,8 @@ export type ErrorCode =
  */
 export type CallerContext =
   | { caller: 'host' }
+  /** The portal web UI (src/cli/http-server.ts), behind Origin check + either credential. */
+  | { caller: 'portal' }
   | {
       caller: 'agent';
       sessionId: string;

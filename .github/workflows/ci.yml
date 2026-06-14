@@ -21,6 +21,9 @@ jobs:
       - name: Install agent-runner deps (Bun)
         working-directory: container/agent-runner
         run: bun install --frozen-lockfile
+      - name: Install admin web UI deps (Bun)
+        working-directory: web
+        run: bun install --frozen-lockfile
 
       - name: Format check
         run: pnpm run format:check
@@ -30,6 +33,14 @@ jobs:
 
       - name: Typecheck container
         run: pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit
+
+      - name: Typecheck admin web UI
+        working-directory: web
+        run: bun run typecheck
+
+      - name: Build admin web UI
+        working-directory: web
+        run: bun run build
 
       - name: Host tests
         run: pnpm exec vitest run

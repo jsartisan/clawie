@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 296 64" width="296" height="64" role="img" aria-label="NanoClaw">
+  <!-- Wordmark lockup for dark surfaces. -->
+  <g fill="#f1efeb" transform="translate(-2 2) scale(0.94) translate(-5.75 0)">
+    <path d="M 16 14 A 4.2 4.2 0 0 1 24.2 15.5 C 23 27, 24.5 38, 30 48 C 21.5 39.5, 15.5 27, 16 14 Z"/>
+    <path d="M 16 11 A 4.4 4.4 0 0 1 24.6 12.5 C 23.3 25.5, 25 39, 31 50 C 21.8 40.5, 15.4 25.5, 16 11 Z" transform="translate(15 0)"/>
+    <path d="M 16 14 A 4.2 4.2 0 0 1 24.2 15.5 C 23 27, 24.5 38, 30 48 C 21.5 39.5, 15.5 27, 16 14 Z" transform="translate(30 0)"/>
+  </g>
+  <text x="62" y="45" font-family="Georgia, 'Times New Roman', serif" font-size="40" font-weight="600" letter-spacing="-0.5" fill="#f1efeb">NanoClaw</text>
+</svg>

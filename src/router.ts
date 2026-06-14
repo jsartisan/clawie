@@ -23,9 +23,11 @@ import { getAgentGroup } from './db/agent-groups.js';
 import { recordDroppedMessage } from './db/dropped-messages.js';
 import {
   createMessagingGroup,
+  createMessagingGroupAgent,
   getMessagingGroupAgents,
   getMessagingGroupWithAgentCount,
 } from './db/messaging-groups.js';
+import { getChannelAccount } from './db/channel-accounts.js';
 import { findSessionForAgent } from './db/sessions.js';
 import { startTypingRefresh, stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
@@ -34,6 +36,7 @@ import { wakeContainer } from './container-runner.js';
 import { getSession } from './db/sessions.js';
 import type { AgentGroup, MessagingGroup, MessagingGroupAgent } from './types.js';
 import type { InboundEvent } from './channels/adapter.js';
+import { getRecentMemoryEntries } from './db/memory.js';
 
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -169,11 +172,27 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
 
   const isMention = event.message.isMention === true;
 
+  // Resolve which bot/app instance this message arrived through. A Telegram
+  // DM's platform_id equals the user id and is shared across every bot, so the
+  // account is what scopes the chat. Resolved once here and reused for the
+  // default-agent auto-wire below.
+  const inboundAccount = event.channelAccount
+    ? getChannelAccount(event.channelType, event.channelAccount)
+    : undefined;
+
   // 1. Combined lookup: messaging_group row + count of wired agents in a
   //    single query. Cheap short-circuit for the common "unwired channel"
   //    case — one DB read and we're out, no auto-create, no sender
-  //    resolution, no log spam.
-  const found = getMessagingGroupWithAgentCount(event.channelType, event.platformId);
+  //    resolution, no log spam. Account-scoped so two bots DM'd by the same
+  //    user resolve to two different chats; the default bot also matches
+  //    legacy NULL-account rows.
+  const found = getMessagingGroupWithAgentCount(
+    event.channelType,
+    event.platformId,
+    event.channelAccount !== undefined
+      ? { channelAccount: event.channelAccount, includeNullAccount: inboundAccount?.is_default === 1 }
+      : undefined,
+  );
 
   let mg: MessagingGroup;
   let agentCount: number;
@@ -191,6 +210,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       is_group: event.message.isGroup ? 1 : 0,
       unknown_sender_policy: 'request_approval',
       denied_at: null,
+      channel_account: event.channelAccount ?? null,
       created_at: new Date().toISOString(),
     };
     createMessagingGroup(mg);
@@ -217,33 +237,57 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       return;
     }
 
-    const parsed = safeParseContent(event.message.content);
-    recordDroppedMessage({
-      channel_type: event.channelType,
-      platform_id: event.platformId,
-      user_id: null,
-      sender_name: parsed.sender ?? null,
-      reason: 'no_agent_wired',
-      messaging_group_id: mg.id,
-      agent_group_id: null,
-    });
-
-    if (channelRequestGate) {
-      // Fire-and-forget escalation. The gate is expected to build a card,
-      // persist pending_channel_approvals, and replay the event via
-      // routeInbound after approval. Errors are logged internally — the
-      // user's message still stays dropped here either way.
-      void channelRequestGate(mg, event).catch((err) =>
-        log.error('Channel-request gate threw', { messagingGroupId: mg.id, err }),
-      );
-    } else {
-      log.warn('MESSAGE DROPPED — no agent groups wired and no channel-request gate registered', {
-        messagingGroupId: mg.id,
-        channelType: event.channelType,
-        platformId: event.platformId,
+    // Per-bot default agent: if this message arrived via a channel account
+    // (a specific bot/app) that has a default agent, auto-wire this chat to
+    // it and fall through to normal fan-out — no "which agent?" escalation.
+    if (inboundAccount?.default_agent_group_id) {
+      createMessagingGroupAgent({
+        id: `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        messaging_group_id: mg.id,
+        agent_group_id: inboundAccount.default_agent_group_id,
+        engage_mode: 'mention',
+        engage_pattern: null,
+        sender_scope: 'all',
+        ignored_message_policy: 'drop',
+        session_mode: 'shared',
+        priority: 0,
+        created_at: new Date().toISOString(),
       });
+      log.info('Auto-wired chat to channel account default agent', {
+        messagingGroupId: mg.id,
+        channelAccount: event.channelAccount,
+        agentGroupId: inboundAccount.default_agent_group_id,
+      });
+      agentCount = 1; // fall through to fan-out; `agents` is fetched fresh below
+    } else {
+      const parsed = safeParseContent(event.message.content);
+      recordDroppedMessage({
+        channel_type: event.channelType,
+        platform_id: event.platformId,
+        user_id: null,
+        sender_name: parsed.sender ?? null,
+        reason: 'no_agent_wired',
+        messaging_group_id: mg.id,
+        agent_group_id: null,
+      });
+
+      if (channelRequestGate) {
+        // Fire-and-forget escalation. The gate is expected to build a card,
+        // persist pending_channel_approvals, and replay the event via
+        // routeInbound after approval. Errors are logged internally — the
+        // user's message still stays dropped here either way.
+        void channelRequestGate(mg, event).catch((err) =>
+          log.error('Channel-request gate threw', { messagingGroupId: mg.id, err }),
+        );
+      } else {
+        log.warn('MESSAGE DROPPED — no agent groups wired and no channel-request gate registered', {
+          messagingGroupId: mg.id,
+          channelType: event.channelType,
+          platformId: event.platformId,
+        });
+      }
+      return;
     }
-    return;
   }
 
   // 2. Sender resolution (permissions module upserts the users row as a
@@ -414,6 +458,14 @@ async function deliverToAgent(
 
   const { session, created } = resolveSession(agent.agent_group_id, mg.id, event.threadId, effectiveSessionMode);
 
+  // On a brand-new session, inject remembered context from prior sessions so
+  // the agent walks in knowing the user's preferences and past facts.
+  if (created) {
+    injectMemoryContext(agent.agent_group_id, session.id).catch((err) =>
+      log.warn('Memory context injection failed', { sessionId: session.id, err }),
+    );
+  }
+
   // The inbound row's (channel_type, platform_id, thread_id) is the address
   // the agent's reply will be delivered to. Normally it mirrors the source
   // (stamped from the event). When the caller supplied `replyTo` (CLI admin
@@ -472,7 +524,14 @@ async function deliverToAgent(
   if (wake) {
     // Typing indicator + wake are only for the engaged branch; accumulated
     // messages sit silently until a real trigger fires.
-    startTypingRefresh(session.id, session.agent_group_id, event.channelType, event.platformId, event.threadId);
+    startTypingRefresh(
+      session.id,
+      session.agent_group_id,
+      event.channelType,
+      event.platformId,
+      event.threadId,
+      mg.channel_account ?? null,
+    );
     const freshSession = getSession(session.id);
     if (freshSession) {
       const woke = await wakeContainer(freshSession);
@@ -493,4 +552,36 @@ async function deliverToAgent(
 function messageIdForAgent(baseId: string | undefined, agentGroupId: string): string {
   const id = baseId && baseId.length > 0 ? baseId : generateId();
   return `${id}:${agentGroupId}`;
+}
+
+/**
+ * Prepend remembered context from prior sessions into a new session's
+ * inbound DB as a non-waking system message. The agent reads this on its
+ * first turn and walks in already aware of the user's preferences and facts.
+ */
+async function injectMemoryContext(agentGroupId: string, sessionId: string): Promise<void> {
+  const entries = getRecentMemoryEntries(agentGroupId, { maxEntries: 30, maxChars: 8000 });
+  if (entries.length === 0) return;
+
+  const facts = entries.filter((e) => e.kind === 'fact').map((e) => `- ${e.content}`);
+  const prefs = entries.filter((e) => e.kind === 'preference').map((e) => `- ${e.content}`);
+  const skills = entries.filter((e) => e.kind === 'skill_created' || e.kind === 'skill_patched').map((e) => `- ${e.skill_name}: ${e.content}`);
+
+  const sections: string[] = [];
+  if (prefs.length > 0) sections.push(`**User preferences:**\n${prefs.join('\n')}`);
+  if (facts.length > 0) sections.push(`**Known facts:**\n${facts.join('\n')}`);
+  if (skills.length > 0) sections.push(`**Learned skills (available in your skills directory):**\n${skills.join('\n')}`);
+
+  const content = `<memory from_prior_sessions="true">\n${sections.join('\n\n')}\n</memory>`;
+
+  writeSessionMessage(agentGroupId, sessionId, {
+    id: `memory-ctx-${sessionId}`,
+    kind: 'system',
+    timestamp: new Date().toISOString(),
+    platformId: null,
+    channelType: null,
+    threadId: null,
+    content,
+    trigger: 0, // context only — do not wake the container
+  });
 }

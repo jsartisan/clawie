@@ -1,4 +1,5 @@
 import type { AgentGroup } from '../types.js';
+import { toOneCLIIdentifier } from '../onecli-identifier.js';
 import { getDb } from './connection.js';
 
 export function createAgentGroup(group: AgentGroup): void {
@@ -16,6 +17,19 @@ export function getAgentGroup(id: string): AgentGroup | undefined {
 
 export function getAgentGroupByFolder(folder: string): AgentGroup | undefined {
   return getDb().prepare('SELECT * FROM agent_groups WHERE folder = ?').get(folder) as AgentGroup | undefined;
+}
+
+/**
+ * Resolve the agent group behind a OneCLI agent identifier (e.g. carried on an
+ * approval request's `agent.externalId`). Identifiers that were already
+ * compliant equal the group id, so try a direct lookup first; otherwise match
+ * by recomputing each group's identifier — the inverse of `toOneCLIIdentifier`
+ * without storing a separate column.
+ */
+export function getAgentGroupByOneCLIIdentifier(identifier: string): AgentGroup | undefined {
+  const direct = getAgentGroup(identifier);
+  if (direct) return direct;
+  return getAllAgentGroups().find((g) => toOneCLIIdentifier(g.id) === identifier);
 }
 
 export function getAllAgentGroups(): AgentGroup[] {

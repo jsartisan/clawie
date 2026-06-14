@@ -101,7 +101,11 @@ export async function dispatch(req: RequestFrame, ctx: CallerContext): Promise<R
     }
   }
 
-  if (ctx.caller !== 'host' && cmd.access === 'approval') {
+  // Approval gating applies to agent callers only. `host` (CLI/socket) and
+  // `portal` (token-authenticated web UI) are operated by the human who
+  // would be approving anyway. Agent callers carry the session needed to
+  // route the approval DM; portal callers have none.
+  if (ctx.caller === 'agent' && cmd.access === 'approval') {
     const session = getSession(ctx.sessionId);
     if (!session) {
       return err(req.id, 'handler-error', 'Session not found.');
@@ -178,7 +182,7 @@ export async function dispatch(req: RequestFrame, ctx: CallerContext): Promise<R
   }
 }
 
-registerApprovalHandler('cli_command', async ({ session, payload, userId, notify }) => {
+registerApprovalHandler('cli_command', async ({ payload, notify }) => {
   const frame = payload.frame as RequestFrame;
   const response = await dispatch(frame, { caller: 'host' });
 

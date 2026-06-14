@@ -12,7 +12,7 @@ import type Database from 'better-sqlite3';
 import { getRunningSessions, getActiveSessions, createPendingQuestion } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
-import { getMessagingGroupByPlatform } from './db/messaging-groups.js';
+import { getMessagingGroup, getMessagingGroupByPlatform } from './db/messaging-groups.js';
 import {
   getDueOutboundMessages,
   getDeliveredIds,
@@ -57,8 +57,19 @@ export interface ChannelDeliveryAdapter {
     kind: string,
     content: string,
     files?: OutboundFile[],
+    /**
+     * The bot/app instance to reply through. Optional trailing arg so existing
+     * callers (approvals, onecli) stay unchanged; session delivery passes the
+     * chat's own account so a reply goes out through the bot that received it.
+     */
+    channelAccount?: string | null,
   ): Promise<string | undefined>;
-  setTyping?(channelType: string, platformId: string, threadId: string | null): Promise<void>;
+  setTyping?(
+    channelType: string,
+    platformId: string,
+    threadId: string | null,
+    channelAccount?: string | null,
+  ): Promise<void>;
 }
 
 let deliveryAdapter: ChannelDeliveryAdapter | null = null;
@@ -286,17 +297,28 @@ async function deliverMessage(
   // path in deliverSessionMessages and eventually marks the message as failed
   // (instead of marking it delivered when nothing was actually delivered,
   // which was the pre-refactor bug).
+  // The session's OWN messaging group — authoritative for both the origin-chat
+  // permission check below and the reply-account resolution further down. Never
+  // re-derive the origin chat from (channel_type, platform_id): a Telegram DM's
+  // platform_id is the user id, which collides across bots, so
+  // getMessagingGroupByPlatform can return another account's group and
+  // misclassify a legitimate origin reply as a cross-agent send (→ spurious
+  // "unauthorized channel destination").
+  const originMg = session.messaging_group_id ? getMessagingGroup(session.messaging_group_id) : undefined;
+
   if (msg.channel_type && msg.platform_id) {
-    const mg = getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
-    if (!mg) {
-      throw new Error(`unknown messaging group for ${msg.channel_type}/${msg.platform_id} (message ${msg.id})`);
-    }
-    const isOriginChat = session.messaging_group_id === mg.id;
+    const isOriginChat =
+      !!originMg && originMg.channel_type === msg.channel_type && originMg.platform_id === msg.platform_id;
+
     // Guarded: without the agent-to-agent module, `agent_destinations`
     // doesn't exist and we permit all non-origin channel sends (the
     // origin-chat case is always allowed regardless). Inlined SQL instead
     // of importing `hasDestination` so core doesn't depend on the module.
     if (!isOriginChat && hasTable(getDb(), 'agent_destinations')) {
+      const mg = getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
+      if (!mg) {
+        throw new Error(`unknown messaging group for ${msg.channel_type}/${msg.platform_id} (message ${msg.id})`);
+      }
       const row = getDb()
         .prepare(
           'SELECT 1 FROM agent_destinations WHERE agent_group_id = ? AND target_type = ? AND target_id = ? LIMIT 1',
@@ -353,6 +375,29 @@ async function deliverMessage(
       ? readOutboxFiles(session.agent_group_id, session.id, msg.id, content.files as string[])
       : undefined;
 
+  // Fire a fresh typing action immediately before the send so the indicator
+  // is guaranteed alive at the instant the message lands. Without this, the
+  // heartbeat-driven refresh can expire (agent stream ended, heartbeat stale)
+  // seconds before the message finishes its outbound-poll + network path,
+  // leaving a visible "typing stops, then message arrives" gap. Skip internal
+  // traffic (system actions, agent-to-agent) — the user never sees those.
+  // Best-effort: typing must never block or fail real delivery.
+  if (msg.kind !== 'system' && msg.channel_type !== 'agent' && deliveryAdapter.setTyping) {
+    try {
+      await deliveryAdapter.setTyping(
+        msg.channel_type,
+        msg.platform_id,
+        msg.thread_id,
+        originMg?.channel_account ?? null,
+      );
+    } catch {
+      // Typing is best-effort — never block or fail real delivery.
+    }
+  }
+
+  // Reply through the bot identified by the session's own messaging group
+  // (originMg, resolved above). NULL account maps to the channel's default bot
+  // downstream in the delivery bridge.
   const platformMsgId = await deliveryAdapter.deliver(
     msg.channel_type,
     msg.platform_id,
@@ -360,6 +405,7 @@ async function deliverMessage(
     msg.kind,
     msg.content,
     files,
+    originMg?.channel_account ?? null,
   );
   log.info('Message delivered', {
     id: msg.id,

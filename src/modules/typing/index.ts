@@ -45,7 +45,12 @@ const HEARTBEAT_FRESH_MS = 6000;
 const POST_DELIVERY_PAUSE_MS = 10000;
 
 interface TypingAdapter {
-  setTyping?(channelType: string, platformId: string, threadId: string | null): Promise<void>;
+  setTyping?(
+    channelType: string,
+    platformId: string,
+    threadId: string | null,
+    channelAccount?: string | null,
+  ): Promise<void>;
 }
 
 interface TypingTarget {
@@ -53,6 +58,13 @@ interface TypingTarget {
   channelType: string;
   platformId: string;
   threadId: string | null;
+  /**
+   * The bot/app instance the inbound arrived through. Required to disambiguate
+   * chats whose platform_id is shared across accounts — e.g. a Telegram DM,
+   * whose chat id equals the user id and is identical across every bot. Without
+   * it, the typing indicator can fire on the wrong bot.
+   */
+  channelAccount: string | null;
   interval: NodeJS.Timeout;
   startedAt: number;
   pausedUntil: number; // epoch ms; 0 = not paused
@@ -72,9 +84,14 @@ export function setTypingAdapter(a: TypingAdapter): void {
   adapter = a;
 }
 
-async function triggerTyping(channelType: string, platformId: string, threadId: string | null): Promise<void> {
+async function triggerTyping(
+  channelType: string,
+  platformId: string,
+  threadId: string | null,
+  channelAccount: string | null,
+): Promise<void> {
   try {
-    await adapter?.setTyping?.(channelType, platformId, threadId);
+    await adapter?.setTyping?.(channelType, platformId, threadId, channelAccount);
   } catch {
     // Typing is best-effort — don't let it fail delivery or routing.
   }
@@ -96,6 +113,7 @@ export function startTypingRefresh(
   channelType: string,
   platformId: string,
   threadId: string | null,
+  channelAccount: string | null = null,
 ): void {
   const existing = typingRefreshers.get(sessionId);
   if (existing) {
@@ -104,14 +122,14 @@ export function startTypingRefresh(
     // the container-wake latency budget. Also clear any lingering
     // post-delivery pause: a new inbound means the user expects
     // typing to show immediately.
-    triggerTyping(channelType, platformId, threadId).catch(() => {});
+    triggerTyping(channelType, platformId, threadId, channelAccount).catch(() => {});
     existing.startedAt = Date.now();
     existing.pausedUntil = 0;
     return;
   }
 
   // Immediate tick + periodic refresh.
-  triggerTyping(channelType, platformId, threadId).catch(() => {});
+  triggerTyping(channelType, platformId, threadId, channelAccount).catch(() => {});
   const startedAt = Date.now();
   const interval = setInterval(() => {
     const entry = typingRefreshers.get(sessionId);
@@ -124,7 +142,7 @@ export function startTypingRefresh(
 
     const withinGrace = Date.now() - entry.startedAt < TYPING_GRACE_MS;
     if (withinGrace || isHeartbeatFresh(entry.agentGroupId, sessionId)) {
-      triggerTyping(entry.channelType, entry.platformId, entry.threadId).catch(() => {});
+      triggerTyping(entry.channelType, entry.platformId, entry.threadId, entry.channelAccount).catch(() => {});
       return;
     }
 
@@ -139,6 +157,7 @@ export function startTypingRefresh(
     channelType,
     platformId,
     threadId,
+    channelAccount,
     interval,
     startedAt,
     pausedUntil: 0,

@@ -20,10 +20,11 @@ import { slackifyMarkdown } from 'slackify-markdown';
 
 import { readEnvFile } from '../env.js';
 import { getAskQuestionRender } from '../db/sessions.js';
+import { getChannelAccounts, getAccountSecrets } from '../db/channel-accounts.js';
 import { log } from '../log.js';
 import { normalizeOptions, type NormalizedOption } from './ask-question.js';
 import { registerChannelAdapter } from './channel-registry.js';
-import type { ChannelAdapter, ChannelSetup, InboundMessage, OutboundMessage } from './adapter.js';
+import type { ChannelAdapter, ChannelSetup, InboundMessage, OutboundMessage, SecretValidation } from './adapter.js';
 
 // ---------------------------------------------------------------------------
 // Platform/thread id encoding (must match the legacy Chat SDK adapter)
@@ -561,15 +562,65 @@ function makeSilentLogger() {
   };
 }
 
-registerChannelAdapter('slack', {
-  factory: () => {
-    const env = readEnvFile(['SLACK_BOT_TOKEN', 'SLACK_APP_TOKEN']);
-    if (!env.SLACK_BOT_TOKEN || !env.SLACK_APP_TOKEN) {
-      if (env.SLACK_BOT_TOKEN || env.SLACK_APP_TOKEN) {
-        log.warn('Slack Socket Mode needs both SLACK_BOT_TOKEN and SLACK_APP_TOKEN — skipping');
-      }
-      return null;
+/**
+ * Validate Slack tokens against the live API before storing. bot_token (xoxb)
+ * → auth.test; app_token (xapp) → apps.connections.open (the Socket Mode
+ * handshake endpoint, which is exactly what the token must be able to do).
+ * Network failures fail closed.
+ */
+async function validateSlackSecret(name: string, value: string): Promise<SecretValidation> {
+  try {
+    if (name === 'bot_token') {
+      const res = await new WebClient(value).auth.test();
+      return res.ok
+        ? { ok: true, identity: res.user ? `@${res.user}` : undefined }
+        : { ok: false, reason: 'Slack rejected this bot token' };
     }
-    return createSlackSocketAdapter({ botToken: env.SLACK_BOT_TOKEN, appToken: env.SLACK_APP_TOKEN });
+    if (name === 'app_token') {
+      const res = await fetch('https://slack.com/api/apps.connections.open', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${value}` },
+      });
+      const json = (await res.json()) as { ok: boolean; error?: string };
+      return json.ok ? { ok: true } : { ok: false, reason: json.error ?? 'Slack rejected this app token' };
+    }
+    return { ok: false, reason: `slack has no "${name}" secret — only bot_token and app_token` };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'network error';
+    return { ok: false, reason: `could not validate token against Slack: ${detail}` };
+  }
+}
+
+registerChannelAdapter('slack', {
+  validateSecret: validateSlackSecret,
+  factory: () => {
+    const accounts = getChannelAccounts('slack');
+
+    // Legacy single-bot fallback: no channel_accounts rows -> use the plain
+    // SLACK_BOT_TOKEN / SLACK_APP_TOKEN env vars exactly as before.
+    if (accounts.length === 0) {
+      const env = readEnvFile(['SLACK_BOT_TOKEN', 'SLACK_APP_TOKEN']);
+      if (!env.SLACK_BOT_TOKEN || !env.SLACK_APP_TOKEN) {
+        if (env.SLACK_BOT_TOKEN || env.SLACK_APP_TOKEN) {
+          log.warn('Slack Socket Mode needs both SLACK_BOT_TOKEN and SLACK_APP_TOKEN — skipping');
+        }
+        return null;
+      }
+      return createSlackSocketAdapter({ botToken: env.SLACK_BOT_TOKEN, appToken: env.SLACK_APP_TOKEN });
+    }
+
+    // Multi-account: one adapter per Slack app, tokens decrypted from the DB.
+    const adapters: ChannelAdapter[] = [];
+    for (const account of accounts) {
+      const secrets = getAccountSecrets(account.id);
+      if (!secrets.bot_token || !secrets.app_token) {
+        log.warn('Slack account missing bot_token/app_token, skipping', { accountId: account.account_id });
+        continue;
+      }
+      const adapter = createSlackSocketAdapter({ botToken: secrets.bot_token, appToken: secrets.app_token });
+      adapter.accountId = account.account_id;
+      adapters.push(adapter);
+    }
+    return adapters;
   },
 });

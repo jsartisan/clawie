@@ -1,0 +1,127 @@
+@import 'tw-animate-css';
+@plugin 'tailwindcss-react-aria-components';
+
+@source '../';
+
+@import './theme.css';
+@import './utilities.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --navbar-height: 56px;
+
+  /* Ollama typography: SF Pro Rounded for display, system-ui for body */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'SF Pro Rounded', ui-rounded, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  /* Ollama shape system: pills for interactive, 12px for cards */
+  --radius-sm: 9999px;
+  --radius-md: 9999px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@theme inline {
+  --shadow-0: none;
+  --shadow-50: var(--shadow-50-value);
+  --shadow-100: var(--shadow-100-value);
+  --shadow-200: var(--shadow-200-value);
+  --shadow-300: var(--shadow-300-value);
+  --shadow-400: var(--shadow-400-value);
+  --shadow-500: var(--shadow-500-value);
+  --shadow-600: var(--shadow-600-value);
+  --shadow-bevel-100: var(--shadow-bevel-100-value);
+  --shadow-inset-100: var(--shadow-inset-100-value);
+  --shadow-inset-200: var(--shadow-inset-200-value);
+  --shadow-button: var(--shadow-button-value);
+  --shadow-button-hover: var(--shadow-button-hover-value);
+  --shadow-button-inset: var(--shadow-button-inset-value);
+  --shadow-button-default: var(--shadow-button-default-value);
+  --shadow-button-default-hover: var(--shadow-button-default-hover-value);
+  --shadow-button-default-inset: var(--shadow-button-default-inset-value);
+  --shadow-button-destructive: var(--shadow-button-destructive-value);
+  --shadow-button-destructive-hover: var(
+    --shadow-button-destructive-hover-value
+  );
+  --shadow-button-destructive-inset: var(
+    --shadow-button-destructive-inset-value
+  );
+  --shadow-button-primary-success: var(--shadow-button-primary-success-value);
+  --shadow-button-primary-success-hover: var(
+    --shadow-button-primary-success-hover-value
+  );
+  --shadow-button-primary-success-inset: var(
+    --shadow-button-primary-success-inset-value
+  );
+  --shadow-border-inset: var(--shadow-border-inset-value);
+  --text-base: 13px;
+  --text-sm: var(--text-base);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  /* Display headings: SF Pro Rounded — rounded geometry echoes the pill UI. */
+  .font-serif {
+    font-family: var(--font-serif);
+    letter-spacing: 0;
+  }
+  /* The sidebar nav scrolls but a permanent scrollbar reads as clutter. */
+  [data-sidebar='content'] {
+    scrollbar-width: none;
+  }
+  [data-sidebar='content']::-webkit-scrollbar {
+    display: none;
+  }
+}

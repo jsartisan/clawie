@@ -219,9 +219,28 @@ pnpm test             # Host tests (vitest)
 # Agent-runner (Bun — separate package tree under container/agent-runner/)
 cd container/agent-runner && bun install   # After editing agent-runner deps
 cd container/agent-runner && bun test      # Container tests (bun:test)
+
+# Admin web UI (Bun + Vite — separate package tree under web/)
+task dev                                   # Host + web dev server together (single Ctrl-C)
+cd web && bun install                      # After editing web deps — NEVER run pnpm in web/
+cd web && bun run typecheck                # Web typecheck (Vite SPA, own tsconfig)
 ```
 
 Container typecheck is a separate tsconfig — if you edit `container/agent-runner/src/`, run `pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit` from root (or `bun run typecheck` from `container/agent-runner/`).
+
+The portal (user-facing web UI) lives in `web/` — a TanStack Router SPA (separate Bun tree, like `container/agent-runner/`). It talks to the host's portal server (`src/cli/http-server.ts`), a loopback-only JSON API on `:4100` guarded by Origin/Host validation plus **two credential forms** (`src/cli/portal-auth.ts`): email/password accounts with httpOnly session cookies (`portal_accounts` / `portal_sessions` tables, scrypt hashes, first-run signup at `/api/auth/*`) for humans, and a bearer token (`NCL_PORTAL_TOKEN`, auto-generated into `.env`) for machine access. Portal requests dispatch with `caller: 'portal'`. **Use Bun in `web/`, never pnpm** — it's isolated from the host pnpm + `minimumReleaseAge` policy. `task dev` runs the host (`pnpm dev`) and the Vite dev server (`:4101`, proxies `/api` → `:4100`) together. `:4100` serves the *built* SPA from `web/dist` (rebuild with `bun run build` in `web/`).
+
+Portal IA (non-technical persona — "agents", "connections", "integrations", never "messaging groups" or "wirings"): Home (greeting, attention items, getting started), Chat (webchat per agent), Agents (create wizard + per-agent settings: name/personality/model, delete), Connections (guided Telegram/Slack bot connect with live token validation + hot-reload), Integrations (curated MCP catalog — `src/integrations/catalog.ts`, enable = npm package + MCP server into container config + background rebuild via `integrations-*` commands), Approvals (inbox resolving `pending_approvals` through the response-handler path), Routines (scheduled tasks across session DBs via `routines-*` commands). Raw resource tables stay reachable under the sidebar's collapsed "Advanced" section (`/r/$plural`). Portal-only commands live in `src/cli/commands/` (`agent-create`, `agent-get/update`, `chat-*`, `integrations-*`, `routines-*`) and reject `caller: 'agent'`.
+
+## Multi-Tenancy (workspaces)
+
+One nanoclaw instance serves many tenants. A **workspace** is the tenant boundary (migration 019): `workspace_id` lives on exactly three tables — `portal_accounts`, `agent_groups`, `channel_accounts` — and everything else (sessions, container configs, wirings, approvals, routines) resolves its workspace through its agent group. `workspaces` rows live in the central DB (`src/db/workspaces.ts`); `ws-default` is created by the migration and owns everything that predates multi-tenancy.
+
+Portal signup is open: the **first** account becomes the **operator** (`is_operator = 1`, claims `ws-default`, sees all workspaces + the Advanced resource pages); every later signup gets a fresh isolated workspace. The bearer token (`NCL_PORTAL_TOKEN`) is always operator-level. `CallerContext` for portal callers carries `{ workspaceId, operator }` (`src/cli/portal-auth.ts` resolves it from the session cookie).
+
+Enforcement lives in `src/cli/workspace-scope.ts` + `src/cli/dispatch.ts`, mirroring the agent-group scoping pattern: tenants are whitelisted to four resources (`groups`, `channel-accounts`, `approvals`, `sessions`); creates are pinned to the caller's workspace (spoofed `workspace_id` → forbidden); id-targeting ops answer **not-found** for cross-workspace ids (no existence oracle); generic list/get rows are post-filtered. Portal commands without a `resource` (`agent-*`, `chat-*`, `integrations-*`, `routines-*`) self-guard via `assertGroupInWorkspace` / `groupVisibleToCaller`, and the webchat HTTP endpoints check the `portal-<group-id>` platform id against the caller's workspace. Sub-agents created agent-to-agent inherit the parent group's workspace; host/CLI callers are unscoped.
+
+Operator tooling: the `workspaces` resource (`ncl workspaces list/get/update`, operator-only) plus `ncl workspaces usage` — per-workspace metering (accounts, agents, bots, sessions, pending approvals). Tests: `src/cli/workspace-scope.test.ts`.
 
 Service management:
 ```bash

@@ -40,8 +40,12 @@ registerResource({
     'Agent group — a logical agent identity. Each group has its own workspace folder (CLAUDE.md, skills, container config), conversation history, and container image. Multiple messaging groups can be wired to one agent group.',
   idColumn: 'id',
   scopeField: 'id',
+  // Match the convention used by the non-CLI creation paths
+  // (agent-to-agent/create-agent.ts, channel-approval.ts) and keep ids
+  // OneCLI-identifier-compliant by construction (must start with a letter).
+  generateId: () => `ag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   columns: [
-    { name: 'id', type: 'string', description: 'UUID.', generated: true },
+    { name: 'id', type: 'string', description: 'Agent group id (ag-<ts>-<rand>).', generated: true },
     {
       name: 'name',
       type: 'string',

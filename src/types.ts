@@ -47,6 +47,33 @@ export interface MessagingGroup {
    * the column itself defaults to NULL in SQLite.
    */
   denied_at?: string | null;
+  /**
+   * Which channel account (bot/app instance) owns this chat. NULL for the
+   * legacy single-bot setup and non-account channels. Stamped at auto-create
+   * time from the inbound event; used by delivery to pick the right adapter
+   * instance so replies go out through the correct bot. See `channel_accounts`.
+   */
+  channel_account?: string | null;
+  created_at: string;
+}
+
+/**
+ * A channel account — one bot/app instance on a channel type, bound to a
+ * default agent group. Tokens live (encrypted) in `channel_account_secrets`,
+ * keyed by `id`; this row is the non-secret mapping, safe to list/query.
+ */
+export interface ChannelAccount {
+  id: string;
+  channel_type: string;
+  account_id: string;
+  default_agent_group_id: string | null;
+  /**
+   * The one account per channel_type that transparently owns legacy
+   * `channel_account IS NULL` chats — both for inbound matching and outbound
+   * delivery. Lets a single-bot install adopt accounts without backfilling
+   * existing messaging groups. At most one row per channel_type has this set.
+   */
+  is_default: number;
   created_at: string;
 }
 

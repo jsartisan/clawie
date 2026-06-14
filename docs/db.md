@@ -9,6 +9,22 @@ Related: [architecture.md](architecture.md) for the high-level design; [api-deta
 
 ---
 
+## 0. Terminology
+
+A few words recur throughout the schema and are easy to conflate. Pin them down once:
+
+| Term | What it means | Example |
+|------|---------------|---------|
+| **Channel** | A messaging *service* NanoClaw integrates with. This is the concept word the code uses everywhere — `channel_type`, `ChannelAdapter`, the channel registry. | `telegram`, `slack` |
+| **Channel account** | One specific bot/app instance on a channel. Lets one channel run multiple bots. | `"MyHelperBot"` vs `"WorkBot"`, both on Telegram |
+| **Platform** | The *external service itself* (the outside world). Not a separate concept from "channel" — used only when referring to the service's own behavior/identifiers, never as a competing label. Its only structural footprint is `platform_id`. | the Telegram API |
+| **`platform_id`** | The ID the external service assigns to one chat/user. NanoClaw stores it verbatim, namespaced by channel. | `"telegram:123456789"` |
+| **Messaging group** | NanoClaw's record of one specific conversation, identified by `(channel_type, platform_id)`. | your 1:1 DM with the bot |
+
+Rule of thumb: say **"channel"** for the service-level concept (it's the consistent code term); reserve **"platform"** for the external service and its `platform_id`. A conversation is uniquely pinned by *which channel* + *which platform_id*.
+
+---
+
 ## 1. The three databases
 
 NanoClaw uses **three kinds of SQLite database**, all on the host filesystem:
@@ -108,6 +124,8 @@ These rules are enforced by convention in `src/session-manager.ts` and `containe
 | `agent_destinations` | central | `src/db/agent-destinations.ts`, migration 004 backfill | `writeDestinations()`, delivery ACL |
 | `pending_approvals` | central | `src/db/sessions.ts`, `src/onecli-approvals.ts` | admin-card delivery, sweep |
 | `unregistered_senders` | central | `src/db/dropped-messages.ts` | ops tooling |
+| `channel_accounts` | central | `src/db/channel-accounts.ts` | channel adapter factories, router (auto-wire), delivery |
+| `channel_account_secrets` | central | `src/db/channel-accounts.ts` (encrypted via `src/crypto/secrets.ts`) | adapter factories at boot |
 | `chat_sdk_*` | central | `src/state-sqlite.ts` | Chat SDK bridge |
 | `schema_version` | central | `src/db/migrations/index.ts` | migration runner |
 | `messages_in` | inbound | `src/db/session-db.ts` | `container/agent-runner/src/db/messages-in.ts` |

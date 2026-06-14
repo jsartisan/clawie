@@ -44,6 +44,13 @@ export interface DeliveryAddress {
  */
 export interface InboundEvent {
   channelType: string;
+  /**
+   * Which account (bot/app instance) received this message. Set by the host's
+   * per-adapter setup closure from the adapter's `accountId`. Used by the
+   * router to look up the bot's default agent, and stamped onto the messaging
+   * group so outbound replies route back through the same bot.
+   */
+  channelAccount?: string;
   platformId: string;
   threadId: string | null;
   message: {
@@ -113,6 +120,13 @@ export interface ChannelAdapter {
   channelType: string;
 
   /**
+   * Which account (bot/app instance) this adapter serves, when a channel runs
+   * multiple bots. Omitted for single-bot channels — the registry then treats
+   * the channelType itself as the account key. See `channel_accounts`.
+   */
+  accountId?: string;
+
+  /**
    * Whether this adapter models conversations as threads.
    *
    * true  — adapter's platform uses threads as the primary conversation unit
@@ -166,8 +180,23 @@ export interface ChannelAdapter {
   openDM?(userHandle: string): Promise<string>;
 }
 
-/** Factory function that creates a channel adapter (returns null if credentials missing). */
-export type ChannelAdapterFactory = () => ChannelAdapter | Promise<ChannelAdapter> | null;
+/**
+ * Factory function that creates channel adapter(s) (returns null if credentials
+ * missing). May return an array to spin up multiple bot/app instances of the
+ * same channel type — one per `channel_accounts` row.
+ */
+export type ChannelAdapterFactory = () =>
+  | ChannelAdapter
+  | ChannelAdapter[]
+  | Promise<ChannelAdapter | ChannelAdapter[]>
+  | null;
+
+/**
+ * Result of validating a credential against the platform's API before it is
+ * stored. `identity` is the human-readable bot identity (e.g. `@my_bot`) so
+ * the UI can confirm what just connected.
+ */
+export type SecretValidation = { ok: true; identity?: string } | { ok: false; reason: string };
 
 /** Registration entry for a channel adapter. */
 export interface ChannelRegistration {
@@ -176,4 +205,11 @@ export interface ChannelRegistration {
     mounts?: Array<{ hostPath: string; containerPath: string; readonly: boolean }>;
     env?: Record<string, string>;
   };
+  /**
+   * Validate a token against the live platform (e.g. Telegram getMe, Slack
+   * auth.test) before `channel-accounts set-secret` persists it. `name` is
+   * the token key (bot_token | app_token). Channels that omit this store
+   * secrets unvalidated.
+   */
+  validateSecret?: (name: string, value: string) => Promise<SecretValidation>;
 }
