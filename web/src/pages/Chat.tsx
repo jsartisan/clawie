@@ -1,21 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { IconAlertTriangle, IconArrowUp } from '@tabler/icons-react';
 
-import { Avatar } from 'ui/components/Avatar';
-import { Button } from 'ui/components/Button';
-import { Skeleton } from 'ui/components/Skeleton';
-import { Textarea } from 'ui/components/Textarea';
-import { toast } from 'ui/components/Toast';
-
 import {
-  CommandError,
-  call,
-  chatEventsUrl,
-  chatHistory,
-  openChat,
-  sendChatMessage,
-} from '../lib/api';
+  Avatar,
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+  Loader,
+  Message,
+  MessageContent,
+  PromptInput,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+  Response,
+  Skeleton,
+  toast,
+} from 'ui';
+
+import { CommandError, call, chatEventsUrl, chatHistory, openChat, sendChatMessage } from '../lib/api';
 import type { ChatEvent, ChatHistoryEntry } from '../lib/api';
 
 interface AgentGroup {
@@ -23,7 +29,7 @@ interface AgentGroup {
   name?: string;
 }
 
-type Message = ChatHistoryEntry & { pending?: boolean };
+type Msg = ChatHistoryEntry & { pending?: boolean };
 
 /** Hide the typing indicator if no refresh arrives within this window. */
 const TYPING_TTL_MS = 8_000;
@@ -33,27 +39,26 @@ export function Chat() {
 
   const [agent, setAgent] = useState<AgentGroup | null>(null);
   const [platformId, setPlatformId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[] | null>(null);
+  const [messages, setMessages] = useState<Msg[] | null>(null);
   const [typing, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimerRef = { current: null as ReturnType<typeof setTimeout> | null };
 
   const bumpTyping = useCallback(() => {
     setTyping(true);
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => setTyping(false), TYPING_TTL_MS);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => setTyping(false), TYPING_TTL_MS);
   }, []);
 
   const clearTyping = useCallback(() => {
     setTyping(false);
-    if (typingTimer.current) {
-      clearTimeout(typingTimer.current);
-      typingTimer.current = null;
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
     }
   }, []);
 
-  // Open (or find) the conversation and load its transcript.
   useEffect(() => {
     let cancelled = false;
     setMessages(null);
@@ -80,7 +85,6 @@ export function Chat() {
     };
   }, [groupId]);
 
-  // Live events: agent replies + typing. EventSource reconnects on its own.
   useEffect(() => {
     if (!platformId) return;
     const source = new EventSource(chatEventsUrl(platformId));
@@ -112,7 +116,7 @@ export function Chat() {
   const send = useCallback(
     async (text: string) => {
       if (!platformId) return;
-      const optimistic: Message = {
+      const optimistic: Msg = {
         id: `local-${Date.now()}`,
         role: 'user',
         text,
@@ -122,9 +126,7 @@ export function Chat() {
       setMessages((prev) => [...(prev ?? []), optimistic]);
       try {
         const id = await sendChatMessage(platformId, text);
-        setMessages((prev) =>
-          (prev ?? []).map((m) => (m.id === optimistic.id ? { ...m, id, pending: false } : m)),
-        );
+        setMessages((prev) => (prev ?? []).map((m) => (m.id === optimistic.id ? { ...m, id, pending: false } : m)));
       } catch {
         setMessages((prev) => (prev ?? []).filter((m) => m.id !== optimistic.id));
         toast.error('Message failed to send. Try again.');
@@ -150,37 +152,12 @@ export function Chat() {
   return (
     <div className="bg-background flex h-full flex-col">
       <MessageList messages={messages} typing={typing} agentName={agentName} />
-
       <Composer disabled={!platformId} onSend={send} agentName={agentName} />
     </div>
   );
 }
 
-function MessageList({
-  messages,
-  typing,
-  agentName,
-}: {
-  messages: Message[] | null;
-  typing: boolean;
-  agentName: string;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const stickToBottom = useRef(true);
-
-  // Track whether the user has scrolled away from the bottom; only auto-stick
-  // when they haven't (don't yank the view while reading history).
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-  };
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
-  }, [messages, typing]);
-
+function MessageList({ messages, typing, agentName }: { messages: Msg[] | null; typing: boolean; agentName: string }) {
   if (messages === null) {
     return (
       <div className="flex min-h-0 grow flex-col justify-end gap-3 px-6 py-4" aria-hidden>
@@ -192,58 +169,51 @@ function MessageList({
   }
 
   return (
-    <div ref={scrollRef} onScroll={onScroll} className="min-h-0 grow overflow-y-auto" role="log" aria-label="Messages">
-      <div className="mx-auto flex max-w-2xl flex-col gap-2 px-6 py-4">
+    <Conversation className="min-h-0 grow" aria-label="Messages">
+      <ConversationContent className="mx-auto max-w-2xl px-6 py-4">
         {messages.length === 0 && !typing && (
-          <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <Avatar name={agentName} identity size="xl" />
-            <p className="font-serif text-lg font-medium">Say hi</p>
-            <p className="text-muted-foreground -mt-2 text-sm">
-              This is your direct line to {agentName}.
-            </p>
-          </div>
+          <ConversationEmptyState
+            icon={<Avatar name={agentName} identity size="xl" />}
+            title="Say hi"
+            description={`This is your direct line to ${agentName}.`}
+            className="py-20"
+          />
         )}
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}
-        {typing && <TypingBubble />}
-      </div>
-    </div>
+        {typing && <TypingBubble agentName={agentName} />}
+      </ConversationContent>
+      <ConversationScrollButton />
+    </Conversation>
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
-  const mine = message.role === 'user';
+function MessageBubble({ message }: { message: Msg }) {
+  const from = message.role === 'user' ? 'user' : 'assistant';
   return (
-    <div className={mine ? 'flex justify-end' : 'flex justify-start'}>
-      <div
-        className={
-          mine
-            ? `bg-primary text-primary-foreground max-w-[85%] rounded-xl rounded-br-md px-3.5 py-2 ${message.pending ? 'opacity-70' : ''}`
-            : 'bg-muted text-foreground max-w-[85%] rounded-xl rounded-bl-md px-3.5 py-2'
-        }
-      >
-        <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.text}</div>
-        <time
-          dateTime={message.timestamp}
-          className={`mt-0.5 block text-right text-[10px] tabular-nums ${mine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}
-        >
+    <Message from={from} className={message.pending ? 'opacity-70' : ''}>
+      <MessageContent>
+        {message.role === 'user' ? (
+          <p className="leading-relaxed break-words whitespace-pre-wrap">{message.text}</p>
+        ) : (
+          <Response>{message.text}</Response>
+        )}
+        <time dateTime={message.timestamp} className="block text-right text-[10px] tabular-nums opacity-60">
           {formatTime(message.timestamp)}
         </time>
-      </div>
-    </div>
+      </MessageContent>
+    </Message>
   );
 }
 
-function TypingBubble() {
+function TypingBubble({ agentName }: { agentName: string }) {
   return (
-    <div className="flex justify-start" aria-label="Agent is typing">
-      <div className="bg-muted flex items-center gap-1 rounded-xl rounded-bl-md px-3.5 py-3">
-        <span className="bg-muted-foreground/60 size-1.5 animate-bounce rounded-full [animation-delay:0ms] motion-reduce:animate-none" />
-        <span className="bg-muted-foreground/60 size-1.5 animate-bounce rounded-full [animation-delay:150ms] motion-reduce:animate-none" />
-        <span className="bg-muted-foreground/60 size-1.5 animate-bounce rounded-full [animation-delay:300ms] motion-reduce:animate-none" />
-      </div>
-    </div>
+    <Message from="assistant" aria-label={`${agentName} is typing`}>
+      <MessageContent className="px-4 py-3">
+        <Loader size={14} className="text-muted-foreground" />
+      </MessageContent>
+    </Message>
   );
 }
 
@@ -266,39 +236,24 @@ function Composer({
   };
 
   return (
-    <div className="shrink-0 border-t py-3">
-      <form
-        className="mx-auto flex max-w-2xl items-end gap-2 px-6"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <Textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          disabled={disabled}
-          placeholder={`Message ${agentName}…`}
-          aria-label={`Message ${agentName}`}
-          className="min-h-10 max-h-40"
-          rows={1}
-        />
-        <Button
-          type="submit"
-          size="icon"
-          className="rounded-full"
-          isDisabled={disabled || !value.trim()}
-          aria-label="Send message"
-        >
-          <IconArrowUp className="size-4" />
-        </Button>
-      </form>
+    <div className="shrink-0 py-3">
+      <div className="mx-auto max-w-2xl px-6">
+        <PromptInput onSubmit={submit}>
+          <PromptInputTextarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            disabled={disabled}
+            placeholder={`Message ${agentName}…`}
+            aria-label={`Message ${agentName}`}
+          />
+          <PromptInputFooter>
+            <PromptInputTools />
+            <PromptInputSubmit isDisabled={disabled || !value.trim()}>
+              <IconArrowUp className="size-4" />
+            </PromptInputSubmit>
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
     </div>
   );
 }

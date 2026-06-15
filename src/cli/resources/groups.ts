@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import type { McpServerConfig } from '../../container-config.js';
 import { buildAgentGroupImage, killContainer, wakeContainer } from '../../container-runner.js';
 import { restartAgentGroupContainers } from '../../container-restart.js';
@@ -11,6 +12,7 @@ import {
 } from '../../db/container-configs.js';
 import type { ContainerConfigRow } from '../../types.js';
 import { registerResource } from '../crud.js';
+import { toOneCLIIdentifier } from '../../onecli-identifier.js';
 
 /** Deserialize JSON columns for display. */
 function presentConfig(row: ContainerConfigRow): Record<string, unknown> {
@@ -149,6 +151,20 @@ registerResource({
           return counts;
         });
         const removed = cascade(id);
+
+        // Best-effort: remove the corresponding OneCLI agent so credentials
+        // and config don't linger in the vault after the group is gone.
+        try {
+          const identifier = toOneCLIIdentifier(id);
+          const listOut = execSync('onecli agents list', { encoding: 'utf8' });
+          const agents = JSON.parse(listOut).data as Array<{ id: string; identifier: string }>;
+          const match = agents.find((a) => a.identifier === identifier);
+          if (match) {
+            execSync(`onecli agents delete --id ${match.id}`, { encoding: 'utf8' });
+          }
+        } catch {
+          // OneCLI unavailable or agent already gone — non-fatal
+        }
 
         return { deleted: id, removed };
       },

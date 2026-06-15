@@ -23,7 +23,9 @@ import {
 
 import { useSchema } from '../lib/schema';
 import { titleCase } from '../lib/format';
-import { useTheme, type ThemeId } from '../lib/theme';
+import { useTheme } from 'next-themes';
+
+type ThemeId = 'light' | 'dark' | 'system';
 
 const THEME_OPTIONS: { id: ThemeId; icon: TablerIcon; label: string }[] = [
   { id: 'light', icon: IconSun, label: 'Light theme' },
@@ -50,7 +52,7 @@ export function UserMenu() {
             size="sm"
             selectionMode="single"
             disallowEmptySelection
-            selectedKeys={new Set([theme])}
+            selectedKeys={new Set([theme ?? 'dark'])}
             onSelectionChange={(keys) => {
               const [next] = keys;
               if (typeof next === 'string') setTheme(next as ThemeId);

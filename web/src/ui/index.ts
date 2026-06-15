@@ -20,7 +20,21 @@ export {
   DataTableEmpty,
 } from './components/DataTable';
 export type { DataTableTabItem } from './components/DataTable';
+export {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from './components/Conversation';
 export { Description } from './components/Description';
+export {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+} from './components/Empty';
 export {
   Editable,
   EditablePreview,
@@ -43,6 +57,9 @@ export {
 } from './components/InputGroup';
 export type { InputGroupProps } from './components/InputGroup';
 export { Label } from './components/Label';
+export { Loader } from './components/Loader';
+export { Message, MessageContent, MessageAvatar } from './components/Message';
+export type { MessageProps, MessageContentProps, MessageAvatarProps } from './components/Message';
 export { Link } from './components/Link';
 export { LinkButton } from './components/LinkButton';
 export { ListBox } from './components/ListBox';
@@ -51,8 +68,18 @@ export { Modal } from './components/Modal';
 export { NativeLinkButton } from './components/NativeButtonLink';
 export { NativeLink } from './components/NativeLink';
 export { Panel } from './components/Panel';
+export {
+  PromptInput,
+  PromptInputBody,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputTools,
+  PromptInputButton,
+  PromptInputSubmit,
+} from './components/PromptInput';
 export { Popover } from './components/Popover';
 export { Select } from './components/Select';
+export { Response } from './components/Response';
 export { Separator } from './components/Separator';
 export { Sheet } from './components/Sheet';
 export { Sidebar } from './components/Sidebar';

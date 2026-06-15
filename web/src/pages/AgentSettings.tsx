@@ -4,6 +4,7 @@ import {
   IconBook,
   IconBrandGithub,
   IconBrandGmail,
+  IconChartBar,
   IconBrandSlack,
   IconBrandTelegram,
   IconCalendar,
@@ -49,7 +50,7 @@ interface IntegrationEntry {
   name: string;
   description: string;
   category: string;
-  auth: { type: 'api_key' | 'none' | 'guided'; env?: string; helpUrl?: string; help?: string };
+  auth: { type: 'api_key' | 'none' | 'guided'; env?: string; urlEnv?: string; helpUrl?: string; help?: string };
   enabled_groups: string[];
 }
 
@@ -59,6 +60,7 @@ const INTEGRATION_ICONS: Record<string, typeof IconPuzzle> = {
   firecrawl: IconWorld,
   context7: IconBook,
   github: IconBrandGithub,
+  grafana: IconChartBar,
   gmail: IconBrandGmail,
   'google-calendar': IconCalendar,
 };
@@ -358,17 +360,20 @@ function IntegrationDialog({
   onChanged: () => void;
 }) {
   const [key, setKey] = useState('');
+  const [url, setUrl] = useState('');
   const [pending, setPending] = useState(false);
 
   const enabledHere = entry.enabled_groups.includes(groupId);
   const needsKey = entry.auth.type === 'api_key';
+  const needsUrl = !!entry.auth.urlEnv;
 
   async function run(action: 'enable' | 'disable') {
     if (action === 'enable' && needsKey && !key.trim()) return toast.error('Paste the API key first');
+    if (action === 'enable' && needsUrl && !url.trim()) return toast.error('Enter the instance URL first');
     setPending(true);
     try {
       if (action === 'enable') {
-        await call('integrations-enable', { id: entry.id, group: groupId, key: key.trim() });
+        await call('integrations-enable', { id: entry.id, group: groupId, key: key.trim(), url: url.trim() });
         toast.success(`${entry.name} is being added — your agent will have it in a few minutes`);
       } else {
         await call('integrations-disable', { id: entry.id, group: groupId });
@@ -390,19 +395,30 @@ function IntegrationDialog({
         </DialogHeader>
 
         {needsKey && !enabledHere && (
-          <div className="mt-4 flex flex-col gap-1.5">
-            <TextField
-              label="API key"
-              type="password"
-              value={key}
-              onChange={setKey}
-              description={entry.auth.help}
-            />
-            {entry.auth.helpUrl && (
-              <NativeLink href={entry.auth.helpUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
-                Get a key →
-              </NativeLink>
+          <div className="mt-4 flex flex-col gap-3">
+            {needsUrl && (
+              <TextField
+                label="Instance URL"
+                type="url"
+                placeholder="https://grafana.example.com"
+                value={url}
+                onChange={setUrl}
+              />
             )}
+            <div className="flex flex-col gap-1.5">
+              <TextField
+                label="API key"
+                type="password"
+                value={key}
+                onChange={setKey}
+                description={entry.auth.help}
+              />
+              {entry.auth.helpUrl && (
+                <NativeLink href={entry.auth.helpUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
+                  Get a key →
+                </NativeLink>
+              )}
+            </div>
           </div>
         )}
 

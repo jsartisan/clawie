@@ -15,10 +15,27 @@ export interface IntegrationAuth {
   type: 'api_key' | 'none' | 'guided';
   /** Env var the MCP server reads the key from (api_key only). */
   env?: string;
+  /** Env var for a secondary URL field (e.g. GRAFANA_URL). */
+  urlEnv?: string;
   /** Where the user gets a key, e.g. "https://brave.com/search/api". */
   helpUrl?: string;
   /** One-line plain-language instruction for getting the key. */
   help?: string;
+}
+
+/**
+ * When present, the API key is stored in the OneCLI vault instead of the
+ * container env. The host extracts the hostname from the user-provided URL,
+ * creates a secret with the given injection config, and assigns it to the
+ * agent. The secret id is persisted so disable can clean it up.
+ */
+export interface OneCLISecretConfig {
+  /** Vault display-name prefix (group name appended at runtime). */
+  namePrefix: string;
+  /** HTTP header the secret rides in (e.g. 'Authorization'). */
+  headerName: string;
+  /** Value template (default: '{value}'). */
+  valueFormat?: string;
 }
 
 export interface IntegrationDef {
@@ -31,6 +48,12 @@ export interface IntegrationDef {
   npmPackage?: string;
   /** MCP server wiring (binary exposed by the npm package). */
   mcp?: { name: string; command: string; args: string[] };
+  /**
+   * When set, the API key is registered in the OneCLI vault rather than
+   * written to the container env. The host pattern is derived from the URL
+   * the user provides (auth.urlEnv must also be set).
+   */
+  onecliSecret?: OneCLISecretConfig;
 }
 
 export const INTEGRATION_CATALOG: IntegrationDef[] = [
@@ -98,6 +121,26 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
     },
     npmPackage: '@modelcontextprotocol/server-github',
     mcp: { name: 'github', command: 'mcp-server-github', args: [] },
+  },
+  {
+    id: 'grafana',
+    name: 'Grafana',
+    description: 'Query Loki logs, explore dashboards, and search datasources in your Grafana instance.',
+    category: 'developer',
+    auth: {
+      type: 'api_key',
+      env: 'GRAFANA_SERVICE_ACCOUNT_TOKEN',
+      urlEnv: 'GRAFANA_URL',
+      helpUrl: 'https://grafana.com/docs/grafana/latest/administration/service-accounts/',
+      help: 'For Grafana Cloud Loki: paste base64(userID:token) — run: echo -n "USERID:TOKEN" | base64. For self-hosted Grafana: paste your service account token directly.',
+    },
+    npmPackage: '@leval/mcp-grafana',
+    mcp: { name: 'grafana', command: 'mcp-grafana', args: [] },
+    onecliSecret: {
+      namePrefix: 'Grafana',
+      headerName: 'Authorization',
+      valueFormat: 'Basic {value}',
+    },
   },
   {
     id: 'gmail',

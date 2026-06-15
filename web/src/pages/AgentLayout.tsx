@@ -47,7 +47,7 @@ export function AgentLayout() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-border shrink-0 border-b px-4 pt-3 sm:px-6">
+      <div className="shrink-0 border-b px-4 pt-3 sm:px-6 mx-auto max-w-2xl w-[calc(100%-(var(--spacing)*10))]">
         <div className="flex items-center gap-3 pb-3">
           <Link
             to="/"
@@ -58,17 +58,15 @@ export function AgentLayout() {
           </Link>
           {agent === null ? (
             <>
-              <Skeleton className="size-7 rounded-full" />
               <Skeleton className="h-4 w-32" />
             </>
           ) : (
             <>
-              <Avatar name={agent.name || 'Agent'} identity size="sm" className="size-7" />
               <span className="truncate font-medium">{agent.name || 'Agent'}</span>
             </>
           )}
         </div>
-        <nav className="flex gap-5" aria-label="Agent sections">
+        <nav className="flex gap-5 pt-6" aria-label="Agent sections">
           {TABS.map((tab) => (
             <Link key={tab.to} to={tab.to} params={{ groupId }} className={tabStyles}>
               {tab.label}

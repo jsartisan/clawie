@@ -6,32 +6,10 @@
     <title>Clawie</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta
-      name="theme-color"
-      content="#ffffff"
-      media="(prefers-color-scheme: light)"
-    />
-    <meta
-      name="theme-color"
-      content="#171717"
-      media="(prefers-color-scheme: dark)"
-    />
-    <script>
-      // Apply the saved theme before paint to avoid a flash of the wrong
-      // appearance. Keep this resolution in sync with src/lib/theme.ts.
-      (function () {
-        try {
-          var t = localStorage.getItem('clawie-theme') || 'light';
-          var dark =
-            t === 'dark' ||
-            (t === 'system' &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.classList.toggle('dark', dark);
-        } catch (e) {}
-      })();
-    </script>
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
   </head>
-  <body>
+  <body className="scrollbar-track-transparent">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

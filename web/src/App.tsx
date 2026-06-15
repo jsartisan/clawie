@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { RouterProvider } from '@tanstack/react-router';
+import { ThemeProvider } from 'next-themes';
 
 import { Button } from 'ui/components/Button';
 import { Spinner } from 'ui/components/Spinner';
@@ -39,29 +40,33 @@ export function App() {
 
   if (screen === 'app' && schema) {
     return (
-      <SchemaContext.Provider value={schema}>
-        <RouterProvider router={router} />
-        <Toaster />
-      </SchemaContext.Provider>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <SchemaContext.Provider value={schema}>
+          <RouterProvider router={router} />
+          <Toaster />
+        </SchemaContext.Provider>
+      </ThemeProvider>
     );
   }
 
   if (screen === 'unreachable') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-6">
-        <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
-          <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl shadow-200">
-            <BrandMark className="size-7" />
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <div className="flex min-h-screen flex-col items-center justify-center p-6">
+          <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
+            <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl shadow-200">
+              <BrandMark className="size-7" />
+            </div>
+            <div>
+              <h1 className="font-serif text-[28px] font-medium tracking-tight">Can't reach Clawie</h1>
+              <p className="text-muted-foreground mt-2 text-sm">
+                The app isn't responding. Make sure it's running, then retry.
+              </p>
+            </div>
+            <Button onPress={reload}>Retry</Button>
           </div>
-          <div>
-            <h1 className="font-serif text-[28px] font-medium tracking-tight">Can't reach Clawie</h1>
-            <p className="text-muted-foreground mt-2 text-sm">
-              The app isn't responding. Make sure it's running, then retry.
-            </p>
-          </div>
-          <Button onPress={reload}>Retry</Button>
         </div>
-      </div>
+      </ThemeProvider>
     );
   }
 

@@ -1,37 +1,37 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { IconPlus, IconSearch } from '@tabler/icons-react';
+
+import { BrandMark } from '../components/BrandMark';
+import { call, list } from '../lib/api';
 import {
-  IconArrowRight,
-  IconCircleCheck,
-  IconPlugConnected,
-  IconSettings,
-  IconShieldCheck,
-  IconSparkles,
-} from '@tabler/icons-react';
-
-import { Avatar } from 'ui/components/Avatar';
-import { Button } from 'ui/components/Button';
-import { Card, CardContent } from 'ui/components/Card';
-import { Skeleton } from 'ui/components/Skeleton';
-
-import { list } from '../lib/api';
-import { PageHeader } from '../components/PageHeader';
-import { PageShell } from '../components/PageShell';
+  Badge,
+  Button,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupText,
+  InputGroupInput,
+} from 'ui';
 
 interface AgentGroup {
   id: string;
-  name?: string;
+  name: string;
+  folder: string;
 }
 
-interface PendingApproval {
-  agent_group_id: string | null;
-  status?: string | null;
+interface AgentDetail {
+  id: string;
+  name: string;
+  personality: string;
 }
 
-interface HubData {
-  agents: AgentGroup[];
-  connections: number;
-  approvals: PendingApproval[];
+interface Session {
+  agent_group_id: string;
+  container_status: 'running' | 'idle' | 'stopped';
 }
 
 function greeting(): string {
@@ -42,169 +42,173 @@ function greeting(): string {
   return 'Good evening';
 }
 
-/**
- * The single top-level page. Every agent is a door into its own world —
- * chat, routines, approvals, and settings all live behind the card.
- */
+function firstLine(text: string): string {
+  return text.split('\n').find((l) => l.trim() && !l.trim().startsWith('#')) ?? '';
+}
+
+type AgentStatus = { kind: 'active' } | { kind: 'running'; count: number } | { kind: 'idle' };
+
+function agentStatus(groupId: string, sessions: Session[]): AgentStatus {
+  const mine = sessions.filter((s) => s.agent_group_id === groupId);
+  const running = mine.filter((s) => s.container_status === 'running');
+  if (running.length > 0) {
+    if (running.length === 1) return { kind: 'active' };
+    return { kind: 'running', count: running.length };
+  }
+  return { kind: 'idle' };
+}
+
+function StatusBadge({ status }: { status: AgentStatus }) {
+  if (status.kind === 'active') {
+    return <Badge variant="success">active</Badge>;
+  }
+  if (status.kind === 'running') {
+    return <Badge variant="success">{status.count} running</Badge>;
+  }
+  return null;
+}
+
 export function Agents() {
   const navigate = useNavigate();
-  const [data, setData] = useState<HubData | null>(null);
+  const [agents, setAgents] = useState<AgentDetail[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [query, setQuery] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      list<AgentGroup>('groups').catch(() => []),
-      list('channel-accounts').catch(() => []),
-      list<PendingApproval>('approvals').catch(() => []),
-    ]).then(([agents, connections, approvals]) => {
+
+    async function load() {
+      const groups = await list<AgentGroup>('groups').catch(() => [] as AgentGroup[]);
+      const sess = await list<Session>('sessions').catch(() => [] as Session[]);
       if (cancelled) return;
-      setData({
-        agents,
-        connections: connections.length,
-        approvals: approvals.filter((a) => !a.status || a.status === 'pending'),
-      });
-    });
+      setSessions(sess);
+
+      const details = await Promise.all(
+        groups.map((g) =>
+          call<AgentDetail>('agent-get', { id: g.id }).catch(() => ({
+            id: g.id,
+            name: g.name,
+            personality: '',
+          })),
+        ),
+      );
+      if (cancelled) return;
+      setAgents(details);
+      setLoaded(true);
+    }
+
+    load();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Approvals live inside an agent now — send the user to the right one.
-  const approvalsTarget =
-    data && data.approvals.length > 0
-      ? (data.approvals.find((a) => a.agent_group_id)?.agent_group_id ?? data.agents[0]?.id ?? null)
-      : null;
+  const filtered = useMemo(() => {
+    if (!query.trim()) return agents;
+    const q = query.toLowerCase();
+    return agents.filter((a) => a.name.toLowerCase().includes(q) || firstLine(a.personality).toLowerCase().includes(q));
+  }, [agents, query]);
 
   return (
-    <PageShell width="wide" className="flex flex-col gap-8 pt-12">
-      <PageHeader
-        title={greeting()}
-        description="Each agent has its own personality, memory, and tasks."
-        action={
-          data !== null && data.agents.length > 0 ? (
-            <Button onPress={() => navigate({ to: '/agents/new' })}>
-              <IconSparkles className="size-4" /> New agent
-            </Button>
-          ) : undefined
-        }
-      />
-
-      {data === null ? (
-        <div className="flex flex-col gap-3" aria-hidden>
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
+    <div className="flex min-h-full flex-col items-center px-4 py-12 pt-30">
+      <div className="w-full max-w-[540px]">
+        {/* Logo + greeting */}
+        <div className="mb-8 flex flex-col items-center gap-4 text-center">
+          <BrandMark className="size-10 text-foreground" />
+          <div>
+            <h1 className="text-[28px] font-semibold tracking-tight">{greeting()}</h1>
+            <p className="mt-1 text-[15px] text-muted-foreground">
+              Each agent has its own personality, memory, and tasks.
+            </p>
+          </div>
         </div>
-      ) : (
-        <>
-          {approvalsTarget && (
-            <Card
-              className="hover:shadow-200 cursor-pointer transition-shadow"
-              onClick={() =>
-                navigate({ to: '/agents/$groupId/approvals', params: { groupId: approvalsTarget } })
-              }
-            >
-              <CardContent className="flex items-center justify-between gap-3 py-1">
-                <div className="flex items-center gap-3.5">
-                  <div className="bg-warning/10 text-warning flex size-10 items-center justify-center rounded-full">
-                    <IconShieldCheck className="size-5" stroke={1.75} />
-                  </div>
-                  <div>
-                    <div className="font-medium">
-                      {data.approvals.length} request{data.approvals.length === 1 ? '' : 's'} waiting for you
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      An agent needs your sign-off to continue.
-                    </div>
-                  </div>
-                </div>
-                <IconArrowRight className="text-muted-foreground size-4" />
-              </CardContent>
-            </Card>
-          )}
 
-          {data.agents.length === 0 ? (
-            <GettingStarted />
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {data.agents.map((a) => (
-                  <Card
-                    key={a.id}
-                    variant="outline"
-                    className="group hover:shadow-200 cursor-pointer transition-shadow"
-                    onClick={() => navigate({ to: '/agents/$groupId/chat', params: { groupId: a.id } })}
-                  >
-                    <CardContent className="flex items-center gap-3.5 py-0.5">
-                      <Avatar name={a.name || 'Agent'} identity size="lg" />
-                      <div className="min-w-0 grow">
-                        <div className="truncate text-[15px] font-medium">{a.name || 'Agent'}</div>
-                        <div className="text-muted-foreground text-[13px]">Open chat</div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`${a.name || 'Agent'} settings`}
-                        className="shrink-0"
-                        onPress={() =>
-                          navigate({ to: '/agents/$groupId/settings', params: { groupId: a.id } })
-                        }
-                      >
-                        <IconSettings className="size-4" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+        {/* Search + New agent */}
+        <div className="mb-8 flex gap-2.5">
+          <InputGroup className="min-w-0 flex-1">
+            <InputGroupAddon>
+              <InputGroupText>
+                <IconSearch aria-hidden />
+              </InputGroupText>
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              placeholder="Search agents"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search agents"
+            />
+          </InputGroup>
+          <Button onClick={() => navigate({ to: '/agents/new' })}>
+            <IconPlus className="size-4" aria-hidden />
+            New agent
+          </Button>
+        </div>
 
-              {data.connections === 0 && (
-                <Card
-                  variant="subtle"
-                  className="hover:shadow-100 cursor-pointer transition-shadow"
-                  onClick={() =>
-                    navigate({ to: '/agents/$groupId/settings', params: { groupId: data.agents[0].id } })
-                  }
-                >
-                  <CardContent className="flex items-center justify-between gap-3 py-1">
-                    <div className="flex items-center gap-3.5">
-                      <div className="bg-primary/8 text-primary flex size-10 items-center justify-center rounded-full">
-                        <IconPlugConnected className="size-5" stroke={1.75} />
-                      </div>
-                      <div>
-                        <div className="font-medium">Take your agent everywhere</div>
-                        <div className="text-muted-foreground text-sm">
-                          Connect Telegram or Slack and message your agent from your phone.
-                        </div>
-                      </div>
-                    </div>
-                    <IconArrowRight className="text-muted-foreground size-4" />
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          )}
-        </>
-      )}
-    </PageShell>
-  );
-}
+        {/* Agent list */}
+        {loaded && filtered.length > 0 && (
+          <section>
+            <div className="mb-3 flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {filtered.length} {filtered.length === 1 ? 'agent' : 'agents'}
+              </span>
+            </div>
+            <ul className="divide-y divide-border">
+              {filtered.map((a) => {
+                const status = agentStatus(a.id, sessions);
+                const description = firstLine(a.personality);
+                return (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-start gap-3 py-3.5 text-left transition-opacity hover:opacity-70 active:opacity-50"
+                      onClick={() => navigate({ to: '/agents/$groupId/chat', params: { groupId: a.id } })}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-semibold leading-snug">{a.name}</span>
+                        {description && (
+                          <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">{description}</span>
+                        )}
+                      </span>
+                      <span className="ml-3 flex shrink-0 items-center gap-1">
+                        <StatusBadge status={status} />
+                        <svg
+                          className="size-4 text-muted-foreground/50"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          aria-hidden
+                        >
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
-function GettingStarted() {
-  const navigate = useNavigate();
+        {loaded && agents.length === 0 && (
+          <Empty className="py-16 border-0">
+            <EmptyHeader>
+              <EmptyTitle>No agents yet</EmptyTitle>
+              <EmptyDescription>
+                Create your first agent and give it a personality. You can connect Telegram or Slack to it later.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
 
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-col items-center gap-3 py-10 text-center">
-        <IconSparkles className="text-muted-foreground size-8" aria-hidden />
-        <p className="font-medium">No agents yet</p>
-        <p className="text-muted-foreground max-w-sm text-sm">
-          An agent is your personal AI assistant. Create one, give it a personality, and start
-          chatting. You can connect Telegram or Slack to it later.
-        </p>
-        <Button onPress={() => navigate({ to: '/agents/new' })}>Create your first agent</Button>
+        {loaded && agents.length > 0 && filtered.length === 0 && (
+          <Empty className="py-8 border-0">
+            <EmptyDescription>No agents match &ldquo;{query}&rdquo;</EmptyDescription>
+          </Empty>
+        )}
       </div>
-      <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-xs">
-        <IconCircleCheck className="size-3.5" /> Everything runs on your own machine — your chats never leave it.
-      </p>
-    </section>
+    </div>
   );
 }
