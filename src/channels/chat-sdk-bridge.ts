@@ -379,7 +379,23 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
       }
 
       if (content.operation === 'reaction' && content.messageId && content.emoji) {
-        await adapter.addReaction(tid, content.messageId as string, content.emoji as string);
+        // Reactions are purely cosmetic and best-effort — same category as the
+        // typing indicator. The target message can be deleted or have a stale
+        // id (e.g. Telegram's "Bad Request: message to react not found"), which
+        // is permanent: retrying never succeeds. Swallow the failure so it
+        // doesn't get routed through the message-delivery retry path (3 attempts
+        // + an ERROR-level "failed permanently" log) for a decorative no-op.
+        try {
+          await adapter.addReaction(tid, content.messageId as string, content.emoji as string);
+        } catch (err) {
+          log.warn('Reaction delivery failed (best-effort, ignoring)', {
+            adapter: adapter.name,
+            threadId: tid,
+            messageId: content.messageId,
+            emoji: content.emoji,
+            err,
+          });
+        }
         return;
       }
 

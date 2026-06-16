@@ -4,7 +4,28 @@
  * Writes to outbound.db (container-owned).
  * The host polls this DB (read-only) for undelivered messages.
  */
+import { getConfig } from '../config.js';
 import { getInboundDb, getOutboundDb } from './connection.js';
+
+/**
+ * Strip the host's per-agent-group namespacing suffix from an inbound message id.
+ *
+ * The host stores inbound rows with id `<platformMsgId>:<agentGroupId>` (see
+ * `messageIdForAgent` in src/router.ts) so the same fanned-out message stays
+ * unique across each agent's session DB. But `getMessageIdBySeq` hands this id
+ * back to the channel adapter as the *platform* message id for edit/reaction
+ * targeting, and the suffix corrupts it — e.g. Telegram parses
+ * `1582003360:87:ag-...` down to the chat id `1582003360` and reacts to a
+ * non-existent message ("Bad Request: message to react not found").
+ *
+ * The suffix is exactly `:<agentGroupId>`; remove it to recover the platform id.
+ */
+function stripAgentGroupSuffix(inboundId: string): string {
+  const suffix = `:${getConfig().agentGroupId}`;
+  return getConfig().agentGroupId && inboundId.endsWith(suffix)
+    ? inboundId.slice(0, -suffix.length)
+    : inboundId;
+}
 
 export interface MessageOutRow {
   id: string;
@@ -90,11 +111,13 @@ export function writeMessageOut(msg: WriteMessageOut): number {
 export function getMessageIdBySeq(seq: number): string | null {
   const inbound = getInboundDb();
 
-  // Inbound messages: ID is already the platform message ID
+  // Inbound messages: ID is the platform message ID, namespaced by the host
+  // with a `:<agentGroupId>` suffix for cross-session uniqueness. Strip it so
+  // edit/reaction targeting gets the real platform id the adapter expects.
   const inRow = inbound.prepare('SELECT id FROM messages_in WHERE seq = ?').get(seq) as
     | { id: string }
     | undefined;
-  if (inRow) return inRow.id;
+  if (inRow) return stripAgentGroupSuffix(inRow.id);
 
   // Outbound messages: look up platform message ID from delivered table
   const outRow = getOutboundDb().prepare('SELECT id FROM messages_out WHERE seq = ?').get(seq) as
