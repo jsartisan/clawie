@@ -3,10 +3,18 @@ import {
   getChannelAccountById,
   setAccountSecret,
   setDefaultChannelAccount,
+  updateChannelAccountEngagement,
 } from '../../db/channel-accounts.js';
+import {
+  getMessagingGroupAgentByPair,
+  getMessagingGroupsByChannelAccount,
+  updateMessagingGroupAgent,
+} from '../../db/messaging-groups.js';
 import { reloadChannelType, validateChannelSecret } from '../../channels/channel-registry.js';
 import { log } from '../../log.js';
 import { registerResource } from '../crud.js';
+
+const ENGAGE_MODES = ['mention', 'mention-sticky', 'pattern'] as const;
 
 /**
  * Hot-reload the account's channel type so the change goes live without a
@@ -102,6 +110,77 @@ registerResource({
       handler: async (args) => {
         setDefaultChannelAccount(String(args.id));
         return { ok: true, id: args.id, is_default: true };
+      },
+    },
+    'set-engagement': {
+      access: 'approval',
+      description:
+        'Set how the agent decides to respond on this connection: mention (only when @-mentioned; DMs always reply), ' +
+        'mention-sticky (mention once, then auto-reply in that thread), or pattern (reply when message text matches ' +
+        '--engage-pattern; "." = always-on). Stored as the connection default (used for chats the bot joins later) ' +
+        'and applied to every chat this bot already owns.',
+      args: [
+        { name: 'id', type: 'string', description: 'channel_accounts.id', required: true },
+        {
+          name: 'engage_mode',
+          type: 'string',
+          description: 'mention | mention-sticky | pattern',
+          required: true,
+          enum: [...ENGAGE_MODES],
+        },
+        {
+          name: 'engage_pattern',
+          type: 'string',
+          description: 'Regex source; required when engage_mode=pattern ("." matches everything).',
+        },
+      ],
+      handler: async (args) => {
+        const id = String(args.id);
+        const account = getChannelAccountById(id);
+        if (!account) throw new Error(`channel account not found: ${id}`);
+
+        const engageMode = String(args.engage_mode) as (typeof ENGAGE_MODES)[number];
+        // enum metadata is not auto-enforced for custom ops — validate explicitly.
+        if (!ENGAGE_MODES.includes(engageMode)) {
+          throw new Error(`engage_mode must be one of: ${ENGAGE_MODES.join(', ')}`);
+        }
+
+        // engage_pattern is only meaningful in pattern mode. Require + validate
+        // it there (evaluateEngage fails OPEN on a bad regex, so write-time is
+        // the only guard); null it out otherwise so a stale pattern can't apply.
+        let engagePattern: string | null = null;
+        if (engageMode === 'pattern') {
+          const raw = args.engage_pattern;
+          if (raw === undefined || raw === null || String(raw).length === 0) {
+            throw new Error('engage_pattern is required when engage_mode=pattern (use "." for always-on)');
+          }
+          engagePattern = String(raw);
+          try {
+            new RegExp(engagePattern);
+          } catch (e) {
+            throw new Error(`invalid engage_pattern regex: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+
+        // 1. Write the connection-level default.
+        updateChannelAccountEngagement(id, { engage_mode: engageMode, engage_pattern: engagePattern });
+
+        // 2. Propagate to wirings this bot already owns (auto-wiring only covers
+        //    NEW chats). messaging_groups.channel_account holds the account_id
+        //    string; the wiring to update is the one for this account's default
+        //    agent. Other hand-wired agents on the same chat are left untouched.
+        let updatedWirings = 0;
+        if (account.default_agent_group_id) {
+          const groups = getMessagingGroupsByChannelAccount(account.channel_type, account.account_id);
+          for (const mg of groups) {
+            const wiring = getMessagingGroupAgentByPair(mg.id, account.default_agent_group_id);
+            if (!wiring) continue;
+            updateMessagingGroupAgent(wiring.id, { engage_mode: engageMode, engage_pattern: engagePattern });
+            updatedWirings++;
+          }
+        }
+
+        return { id, engage_mode: engageMode, engage_pattern: engagePattern, updated_wirings: updatedWirings };
       },
     },
     delete: {

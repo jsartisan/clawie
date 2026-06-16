@@ -21,6 +21,7 @@ import { moduleApprovalsPendingApprovals } from './module-approvals-pending-appr
 import { moduleApprovalsTitleOptions } from './module-approvals-title-options.js';
 import { migration021 } from './021-reflection-watermark.js';
 import { migration022 } from './022-drop-portal-accounts.js';
+import { migration023 } from './023-channel-account-engagement.js';
 
 export interface Migration {
   version: number;
@@ -59,6 +60,7 @@ const migrations: Migration[] = [
   migration020,
   migration021,
   migration022,
+  migration023,
 ];
 
 export function runMigrations(db: Database.Database): void {

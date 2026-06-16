@@ -74,6 +74,15 @@ export interface ChannelAccount {
    * existing messaging groups. At most one row per channel_type has this set.
    */
   is_default: number;
+  /**
+   * Default engagement mode for this connection. Stamped onto wirings the
+   * router auto-creates on first inbound (src/router.ts) and propagated to
+   * existing wirings by the `set-engagement` verb. Reuses the EngageMode union
+   * (same values as messaging_group_agents). See migration 023.
+   */
+  engage_mode: EngageMode;
+  /** Regex source when engage_mode='pattern' ('.' = match everything); NULL otherwise. */
+  engage_pattern: string | null;
   created_at: string;
 }
 

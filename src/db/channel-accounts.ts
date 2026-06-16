@@ -65,6 +65,21 @@ export function setDefaultChannelAccount(id: string): void {
 }
 
 /**
+ * Set the engagement defaults for a connection. Validation (mode enum, regex
+ * compile) lives in the `set-engagement` CLI verb; this layer just writes.
+ * Pass `engage_pattern: null` to clear it (e.g. switching away from 'pattern').
+ */
+export function updateChannelAccountEngagement(
+  id: string,
+  updates: { engage_mode: ChannelAccount['engage_mode']; engage_pattern: string | null },
+): void {
+  const result = getDb()
+    .prepare('UPDATE channel_accounts SET engage_mode = ?, engage_pattern = ? WHERE id = ?')
+    .run(updates.engage_mode, updates.engage_pattern, id);
+  if (result.changes === 0) throw new Error(`channel account not found: ${id}`);
+}
+
+/**
  * Store (or replace) an encrypted secret for an account. `name` is a
  * channel-specific token key, e.g. `bot_token` or `app_token`. The plaintext
  * is encrypted here and never persisted in the clear.

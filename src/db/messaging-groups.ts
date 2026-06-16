@@ -134,6 +134,19 @@ export function getMessagingGroupsByChannel(channelType: string): MessagingGroup
   return getDb().prepare('SELECT * FROM messaging_groups WHERE channel_type = ?').all(channelType) as MessagingGroup[];
 }
 
+/**
+ * All messaging groups owned by a specific channel account — used by the
+ * `set-engagement` verb to propagate an account-level engage-mode change to
+ * every chat that bot already owns. Matched on the `channel_account` column
+ * stamped at auto-create time (router.ts), which holds the account's
+ * `account_id` string (NOT `channel_accounts.id`).
+ */
+export function getMessagingGroupsByChannelAccount(channelType: string, channelAccount: string): MessagingGroup[] {
+  return getDb()
+    .prepare('SELECT * FROM messaging_groups WHERE channel_type = ? AND channel_account = ?')
+    .all(channelType, channelAccount) as MessagingGroup[];
+}
+
 export function updateMessagingGroup(
   id: string,
   updates: Partial<Pick<MessagingGroup, 'name' | 'is_group' | 'unknown_sender_policy'>>,
