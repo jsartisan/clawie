@@ -155,6 +155,8 @@ export interface Session {
   status: 'active' | 'closed';
   container_status: 'running' | 'idle' | 'stopped';
   last_active: string | null;
+  /** Watermark for incremental reflection — newest message timestamp already reflected. */
+  last_reflected_at?: string | null;
   created_at: string;
 }
 

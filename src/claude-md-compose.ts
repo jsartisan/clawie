@@ -7,7 +7,8 @@
  *   - optional per-skill fragments (skills that ship `instructions.md`)
  *   - optional per-MCP-server fragments (inline `instructions` field in
  *     `container.json`)
- *   - per-group agent memory (`CLAUDE.local.md`, auto-loaded by Claude Code)
+ *   - per-group persona / custom instructions (`CLAUDE.local.md`, auto-loaded
+ *     by Claude Code). NOT memory — memory lives in `USER.md` / `MEMORY.md`.
  *
  * Runs on every spawn from `container-runner.buildMounts()`. Deterministic —
  * same inputs produce the same CLAUDE.md, and stale fragments are pruned.
@@ -32,7 +33,8 @@ const SHARED_MCP_TOOLS_CONTAINER_BASE = '/app/src/mcp-tools';
 // Resolved at call time (process.cwd() = project root) so tests can swap cwd.
 const MCP_TOOLS_HOST_SUBPATH = path.join('container', 'agent-runner', 'src', 'mcp-tools');
 
-const COMPOSED_HEADER = '<!-- Composed at spawn — do not edit. Edit CLAUDE.local.md for per-group content. -->';
+const COMPOSED_HEADER =
+  '<!-- Composed at spawn — do not edit. Edit CLAUDE.local.md for persona/custom instructions; memory lives in USER.md / MEMORY.md. -->';
 
 /**
  * Regenerate `groups/<folder>/CLAUDE.md` from the shared base, enabled skill
@@ -124,6 +126,14 @@ export function composeGroupClaudeMd(group: AgentGroup): void {
   const imports = ['@./.claude-shared.md'];
   for (const name of [...desired.keys()].sort()) {
     imports.push(`@./.claude-fragments/${name}`);
+  }
+  // Memory files (USER.md = who the user is, MEMORY.md = facts/lessons). The
+  // agent maintains these live; the host reflection pass reconciles them after
+  // each session. Imported when present so they load into context at startup.
+  for (const memFile of ['USER.md', 'MEMORY.md']) {
+    if (fs.existsSync(path.join(groupDir, memFile))) {
+      imports.push(`@./${memFile}`);
+    }
   }
   const body = [COMPOSED_HEADER, ...imports, ''].join('\n');
   writeAtomic(path.join(groupDir, 'CLAUDE.md'), body);

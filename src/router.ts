@@ -36,7 +36,6 @@ import { wakeContainer } from './container-runner.js';
 import { getSession } from './db/sessions.js';
 import type { AgentGroup, MessagingGroup, MessagingGroupAgent } from './types.js';
 import type { InboundEvent } from './channels/adapter.js';
-import { getRecentMemoryEntries } from './db/memory.js';
 
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -456,14 +455,6 @@ async function deliverToAgent(
 
   const { session, created } = resolveSession(agent.agent_group_id, mg.id, event.threadId, effectiveSessionMode);
 
-  // On a brand-new session, inject remembered context from prior sessions so
-  // the agent walks in knowing the user's preferences and past facts.
-  if (created) {
-    injectMemoryContext(agent.agent_group_id, session.id).catch((err) =>
-      log.warn('Memory context injection failed', { sessionId: session.id, err }),
-    );
-  }
-
   // The inbound row's (channel_type, platform_id, thread_id) is the address
   // the agent's reply will be delivered to. Normally it mirrors the source
   // (stamped from the event). When the caller supplied `replyTo` (CLI admin
@@ -552,37 +543,3 @@ function messageIdForAgent(baseId: string | undefined, agentGroupId: string): st
   return `${id}:${agentGroupId}`;
 }
 
-/**
- * Prepend remembered context from prior sessions into a new session's
- * inbound DB as a non-waking system message. The agent reads this on its
- * first turn and walks in already aware of the user's preferences and facts.
- */
-async function injectMemoryContext(agentGroupId: string, sessionId: string): Promise<void> {
-  const entries = getRecentMemoryEntries(agentGroupId, { maxEntries: 30, maxChars: 8000 });
-  if (entries.length === 0) return;
-
-  const facts = entries.filter((e) => e.kind === 'fact').map((e) => `- ${e.content}`);
-  const prefs = entries.filter((e) => e.kind === 'preference').map((e) => `- ${e.content}`);
-  const skills = entries
-    .filter((e) => e.kind === 'skill_created' || e.kind === 'skill_patched')
-    .map((e) => `- ${e.skill_name}: ${e.content}`);
-
-  const sections: string[] = [];
-  if (prefs.length > 0) sections.push(`**User preferences:**\n${prefs.join('\n')}`);
-  if (facts.length > 0) sections.push(`**Known facts:**\n${facts.join('\n')}`);
-  if (skills.length > 0)
-    sections.push(`**Learned skills (available in your skills directory):**\n${skills.join('\n')}`);
-
-  const content = `<memory from_prior_sessions="true">\n${sections.join('\n\n')}\n</memory>`;
-
-  writeSessionMessage(agentGroupId, sessionId, {
-    id: `memory-ctx-${sessionId}`,
-    kind: 'system',
-    timestamp: new Date().toISOString(),
-    platformId: null,
-    channelType: null,
-    threadId: null,
-    content,
-    trigger: 0, // context only — do not wake the container
-  });
-}

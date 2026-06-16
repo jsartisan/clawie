@@ -46,13 +46,6 @@ export {
   getPendingApprovalsByAction,
 } from './sessions.js';
 export {
-  insertMemoryEntry,
-  insertMemoryEntries,
-  getRecentMemoryEntries,
-  hasReflectionLog,
-  insertReflectionLog,
-} from './memory.js';
-export {
   getContainerConfig,
   getAllContainerConfigs,
   createContainerConfig,

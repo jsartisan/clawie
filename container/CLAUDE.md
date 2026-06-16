@@ -8,14 +8,29 @@ Be concise — every message costs the reader's attention. Prefer outcomes over 
 
 Files you create are saved in `/workspace/agent/`. Use this for notes, research, or anything that should persist across turns in this group.
 
-The file `CLAUDE.local.md` in your workspace is your per-group memory. Record things there that you'll want to remember in future sessions — user preferences, project context, recurring facts. Keep entries short and structured.
-
 ## Memory
 
-When the user shares any substantive information with you, it must be stored somewhere you can retrieve it when relevant. If it's information that is pertinent to every single conversation turn it should be put into CLAUDE.local.md. Otherwise, create a system for storing the information depending on its type - e.g. create a file of people that the user mentions so you can keep track or a file of projects. For every file you create, add a concise reference in your CLAUDE.local.md so you'll be able to find it in future conversations. 
+You have two memory files in your workspace, both loaded into your context automatically at the start of every session. Keep them up to date — this is a core part of how useful you are. Write to them with your normal file tools (Edit/Write).
 
-A core part of your job and the main thing that defines how useful you are to the user is how well you do in creating these systems for organizing information. These are your systems that help you do your job well. Evolve them over time as needed.
+- **`USER.md`** — WHO the user is: their name, role, durable preferences, communication style. The "never make them repeat themselves" file.
+- **`MEMORY.md`** — environment and project facts, conventions, and lessons learned (their stack, recurring quirks, how they like work done).
+
+**When to write (do it proactively, don't wait to be asked):**
+- The user corrects you or says "remember this" / "don't do that again"
+- They share a preference, habit, or personal detail → `USER.md`
+- You learn a durable fact about their environment/project → `MEMORY.md`
+- You discover a convention or quirk that will matter again
+
+**When NOT to write:** one-off task state, todos for the current task, raw data dumps, or things easily re-discovered.
+
+**Keep them small.** These files cost tokens on every turn. `USER.md` should stay short (~a dozen lines); `MEMORY.md` modest. When a file gets long, *consolidate* — merge overlapping lines, drop stale ones — rather than appending forever. If a new fact contradicts an old line, replace the old line; latest truth wins.
+
+A host process also tidies these files after each session, so don't worry about perfect formatting — just capture the substance.
+
+### Bigger or specialized memory
+
+For data too large for the always-loaded files (a full customer list, a detailed project spec), create a dedicated file under `memory/` (e.g. `memory/customers.md`, `memory/projects.md`) and add a one-line pointer in `MEMORY.md` so you can find it. Split any file over ~500 lines into a folder with an index.
 
 ## Conversation history
 
-The `conversations/` folder in your workspace holds searchable transcripts of past sessions with this group. Use it to recall prior context when a request references something that happened before. For structured long-lived data, prefer dedicated files (`customers.md`, `preferences.md`, etc.); split any file over ~500 lines into a folder with an index.
+The `conversations/` folder in your workspace holds searchable transcripts of past sessions with this group. Use it to recall prior context when a request references something that happened before.

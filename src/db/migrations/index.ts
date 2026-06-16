@@ -19,7 +19,7 @@ import { migration019 } from './019-workspaces.js';
 import { migration020 } from './020-drop-workspaces.js';
 import { moduleApprovalsPendingApprovals } from './module-approvals-pending-approvals.js';
 import { moduleApprovalsTitleOptions } from './module-approvals-title-options.js';
-import { migration021 } from './021-memory-learning.js';
+import { migration021 } from './021-reflection-watermark.js';
 import { migration022 } from './022-drop-portal-accounts.js';
 
 export interface Migration {
