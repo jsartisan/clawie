@@ -33,7 +33,11 @@ echo '{"kind":"fact","content":"Project uses Next.js 14 with App Router"}' >> /w
 
 ## How to write learned skills
 
-If you discovered a non-trivial reusable workflow or fix, save it as a skill:
+Treat skill creation as a reflex and maintenance as mandatory — don't wait to be asked.
+
+**Create** a skill when, in a turn, you: completed a complex task (~5+ tool calls), fixed a tricky/non-obvious error, or discovered a reusable non-trivial workflow.
+
+**Gate (so you don't over-create)** — only save it if it is **a procedure, not a fact**, **reusable**, **proven on real data first** (don't bake in guesses), and **non-obvious**. One-offs and easily re-discovered facts don't qualify — and facts go to memory, not skills.
 
 ```bash
 SKILL_NAME="your-skill-name"  # lowercase, hyphens only
@@ -51,6 +55,10 @@ EOF
 ```
 
 Skills written here are automatically loaded in future sessions.
+
+**Patch immediately** when you use a skill and find it outdated, incomplete, or wrong. Unmaintained skills are liabilities.
+
+**One skill per workflow** — no duplicate or near-duplicate skills; delete superseded ones rather than letting them pile up.
 
 ## What NOT to write
 
